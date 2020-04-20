@@ -13,8 +13,8 @@ total_count = 0
 
 for event, element in context:
     total_count += 1
-    attributes = element.keys()
-    if 'CreationDate' in attributes and 'OwnerUserId' in attributes and 'Body' in attributes:
+    post_type = element.get('PostTypeId')
+    if 'OwnerUserId' in element.keys() and (post_type is '1' or post_type is '2'):
         # Get values
         extracted_count += 1
         post = {
@@ -23,7 +23,7 @@ for event, element in context:
             'author': element.get('OwnerUserId'),
             'content': element.get('Body')
         }
-        if 'Title' in attributes:
+        if 'Title' in element.keys():
             post['content'] += element.get('Title')
         # Write in CSV       
         with open('../data/{}-posts.csv'.format(post['year']), 'a') as f:
@@ -41,6 +41,6 @@ for event, element in context:
 del context
 
 print('Data extraction done after {:0.4f} seconds'.format(time() - start_time))
-print('  Extracted posts:', extracted_count)
-print('  Unextracted posts:', total_count - extracted_count)
-print('  Total posts:', total_count)
+print('  Extracted:', extracted_count)
+print('  Unextracted:', total_count - extracted_count)
+print('  Total:', total_count)
