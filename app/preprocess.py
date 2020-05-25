@@ -34,21 +34,22 @@ def getPOS(token):
 word_net = WordNetLemmatizer()
 years = []
 
-for csv_path in all_files:
+for csv_path in sorted(all_files):
     # Open CSVs
     with open(csv_path, "r") as csv_file:
         # Read posts
         for post in DictReader(csv_file):
             # Remove HTML tags
-            soup = BeautifulSoup(post['content'], 'html.parser')
+            soup = BeautifulSoup(post['content'], 'lxml')
             for element in soup.find_all('code'):
                 element.decompose()
             post['content'] = soup.get_text().replace('\n', ' ').replace('\r', '')
-            # Preprocess post
+            # Clean post
             preprocessed = []
             for token in simple_preprocess(post['content'], deacc=True):
                 if token not in STOPWORDS:
                     preprocessed.append(word_net.lemmatize(token, pos=getPOS(token)))
+            post['content'] = ' '.join(preprocessed)
             # Write in CSV
             with open(data_path+'{}-preprocessed.csv'.format(post['year']), 'a', errors='surrogatepass') as f:
                 writer = DictWriter(f, fieldnames=post.keys()) 
