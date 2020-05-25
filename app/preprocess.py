@@ -50,7 +50,7 @@ for csv_path in all_files:
                 if token not in STOPWORDS:
                     preprocessed.append(word_net.lemmatize(token, pos=getPOS(token)))
             # Write in CSV
-            with open(data_path+'{}-preprocessed.csv'.format(post['year']), 'a') as f:
+            with open(data_path+'{}-preprocessed.csv'.format(post['year']), 'a', errors='surrogatepass') as f:
                 writer = DictWriter(f, fieldnames=post.keys()) 
                 if post['year'] not in years:
                     writer.writeheader()
