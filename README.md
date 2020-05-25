@@ -10,7 +10,6 @@ $ cd app
 $ python3 extract_data.py
 Data extraction done after 5537.8807 seconds
   Extracted: 47242971
-  Unextracted: 688130
+  Ignored: 688130
   Total: 47931101
 ```
-

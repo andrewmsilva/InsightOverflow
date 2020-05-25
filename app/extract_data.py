@@ -46,5 +46,5 @@ del context
 
 print('Data extraction done after {:0.4f} seconds'.format(time() - start_time))
 print('  Extracted:', extracted_count)
-print('  Unextracted:', total_count - extracted_count)
+print('  Ignored:', total_count - extracted_count)
 print('  Total:', total_count)
