@@ -13,3 +13,10 @@ Data extraction done after 5537.8807 seconds
   Ignored: 688130
   Total: 47931101
 ```
+
+## Preprocessing
+```shell
+$ cd app
+$ python3 preprocess.py
+Preprocessing done after 221536.3804 seconds
+```
