@@ -7,16 +7,18 @@ To run this experiment, it is necessary to download the [data](https://archive.o
 ## Data extraction
 ```shell
 $ cd app
-$ python3 extract_data.py
-Data extraction done after 5537.8807 seconds
+$ python3 extraction.py
+Extraction started
   Extracted: 47242971
   Ignored: 688130
   Total: 47931101
+Done in 5537.8807 seconds
 ```
 
 ## Preprocessing
 ```shell
 $ cd app
-$ python3 preprocess.py
-Preprocessing done after 221536.3804 seconds
+$ python3 preprocessing.py
+Preprocessing started
+Done in 5537.8807 seconds
 ```
