@@ -61,5 +61,3 @@ print('  Extracted:', extracted_count)
 print('  Ignored:', total_count - extracted_count)
 print('  Total:', total_count)
 print('Done in {:0.4f} seconds'.format(time() - start_time))
-
-# Data extraction done after 22951.1279 seconds
