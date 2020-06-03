@@ -13,7 +13,7 @@ results_file = 'posts.csv'
 columns = ['id', 'date', 'author', 'body']
 
 # Connect to Redis
-redis = Redis(host='localhost', port=6379)
+redis = Redis(host='localhost', port=6379, decode_responses=True)
 
 # Create CSV
 with open(path+results_file, 'w', errors='surrogatepass') as f:
@@ -26,8 +26,9 @@ total_count = 0
 for event, element in etree.iterparse(path+source_file, tag='row'):
     total_count += 1
     # Filter questions and answers
-    post_type = element.get('PostTypeId')
-    if post_type == '1' or post_type == '2':
+    post_type = int(element.get('PostTypeId'))
+    score = int(element.get('Score'))
+    if (post_type == 1 or post_type == 2) and score > 0:
         # Get values
         extracted_count += 1
         post = {
@@ -37,15 +38,16 @@ for event, element in etree.iterparse(path+source_file, tag='row'):
             'body': element.get('Body')
         }
         # If it is a question, append title and tags
-        if post_type == '1':
-            tags = element.get('Tags')
-            post['body'] += ' ' + element.get('Title') + ' ' + tags
+        if post_type == 1:
+            tags = element.get('Tags').replace('>', ' ').replace('<', '')
             redis.set(post['id'], tags)
+            post['body'] += ' ' + element.get('Title') + ' ' + tags
         # If it is an answer, append parent tags
         else:
             parent = element.get('ParentId')
             tags = redis.get(parent)
-            post['body'] += ' ' + str(tags)
+            if type(tags) == str:
+                post['body'] += ' ' + tags
         # Write in CSV
         with open(path+results_file, 'a', errors='surrogatepass') as f:
             writer = DictWriter(f, fieldnames=columns) 
