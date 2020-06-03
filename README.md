@@ -9,10 +9,10 @@ To run this experiment, it is necessary to download the [data](https://archive.o
 $ cd app
 $ python3 extraction.py
 Extraction started
-  Extracted: 45928567
-  Ignored: 2002534
+  Extracted: 47828421
+  Ignored: 102680
   Total: 47931101
-Done in 10243.8613 seconds
+Done in 11040.7591 seconds
 ```
 
 ## Preprocessing
