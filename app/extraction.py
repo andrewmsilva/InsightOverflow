@@ -28,7 +28,7 @@ for event, element in etree.iterparse(path+source_file, tag='row'):
     # Filter questions and answers
     post_type = element.get('PostTypeId')
     score = int(element.get('Score'))
-    if (post_type == '1' or post_type == '2') and score > 0:
+    if (post_type == '1' or post_type == '2') and score >= 0:
         # Get values
         extracted_count += 1
         post = {
