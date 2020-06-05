@@ -38,8 +38,8 @@ with open(path+results_file, 'w', errors='surrogatepass') as result_file:
     writer = DictWriter(result_file, fieldnames=columns) 
     writer.writeheader()
 
+# Read posts
 with open(path+source_file, "r") as csv_file:
-    # Read posts
     for post in DictReader(csv_file):
         # Remove HTML tags
         soup = BeautifulSoup(post['body'], 'lxml')

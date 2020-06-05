@@ -23,5 +23,5 @@ Done in 7818.8945 seconds
 $ cd app
 $ python3 preprocessing.py
 Preprocessing started
-Done in 204276.4271 seconds
+Done in 129534.9601 seconds
 ```
