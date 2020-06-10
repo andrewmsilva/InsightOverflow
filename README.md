@@ -12,10 +12,10 @@ This step uses the Redis database and, therefore, it is necessary to install, co
 $ cd app
 $ python3 extraction.py
 Extraction started
-  Extracted: 25980297
-  Ignored: 21950804
+  Extracted: 47828421
+  Ignored: 102680
   Total: 47931101
-Done in 7818.8945 seconds
+Done in 9874.8082 seconds
 ```
 
 ## Preprocessing

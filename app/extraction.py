@@ -27,8 +27,7 @@ for event, element in etree.iterparse(path+source_file, tag='row'):
     total_count += 1
     # Filter questions and answers
     post_type = int(element.get('PostTypeId'))
-    score = int(element.get('Score'))
-    if (post_type == 1 or post_type == 2) and score > 0:
+    if post_type == 1 or post_type == 2:
         # Get values
         extracted_count += 1
         post = {
@@ -48,10 +47,13 @@ for event, element in etree.iterparse(path+source_file, tag='row'):
             tags = redis.get(parent)
             if type(tags) == str:
                 post['body'] += ' ' + tags
-        # Write in CSV
-        with open(path+results_file, 'a', errors='surrogatepass') as f:
-            writer = DictWriter(f, fieldnames=columns) 
-            writer.writerow(post)
+        # Score filtering
+        score = int(element.get('Score'))
+        if score > 0:
+            # Write in CSV
+            with open(path+results_file, 'a', errors='surrogatepass') as f:
+                writer = DictWriter(f, fieldnames=columns) 
+                writer.writerow(post)
     # Clear memory
     element.clear()
     for ancestor in element.xpath('ancestor-or-self::*'):
