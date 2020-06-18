@@ -9,7 +9,7 @@ start_time = time()
 # Settings
 path = '../data/'
 source_file = 'posts.xml'
-results_file = 'posts.csv'
+results_file = 'posts>=0.csv'
 columns = ['id', 'date', 'author', 'body']
 
 # Connect to Redis
@@ -29,7 +29,6 @@ for event, element in etree.iterparse(path+source_file, tag='row'):
     post_type = int(element.get('PostTypeId'))
     if post_type == 1 or post_type == 2:
         # Get values
-        extracted_count += 1
         post = {
             'id': element.get('Id'),
             'date': element.get('CreationDate')[:10],
@@ -49,7 +48,8 @@ for event, element in etree.iterparse(path+source_file, tag='row'):
                 post['body'] += ' ' + tags
         # Score filtering
         score = int(element.get('Score'))
-        if score > 0:
+        if score >= 0:
+            extracted_count += 1
             # Write in CSV
             with open(path+results_file, 'a', errors='surrogatepass') as f:
                 writer = DictWriter(f, fieldnames=columns) 
