@@ -28,8 +28,8 @@ def getPOS(token):
 
 # Settings
 path = '../data/'
-source_file = 'posts.csv'
-results_file = 'preprocessed-'+source_file
+source_file = 'posts>=0.csv'
+results_file = 'preprocessedd-'+source_file
 columns = ['id', 'date', 'author', 'body']
 word_net = WordNetLemmatizer()
 
@@ -47,11 +47,8 @@ with open(path+source_file, "r") as csv_file:
             tag.decompose()
         post['body'] = soup.get_text().replace('\n', ' ').replace('\r', '')
         # Tokenize, remove stopwords and lemmatize
-        preprocessed = []
-        for token in simple_preprocess(post['body'], deacc=True):
-            if token not in STOPWORDS:
-                preprocessed.append(word_net.lemmatize(token, pos=getPOS(token)))
-        post['body'] = ' '.join(preprocessed)
+        post['body'] = [ word_net.lemmatize(token, pos=getPOS(token)) for token in simple_preprocess(post['body'], deacc=True) if token not in STOPWORDS ]
+        post['body'] = ' '.join(post['body'])
         # Write in CSV
         with open(path+results_file, 'a', errors='surrogatepass') as result_file:
             writer = DictWriter(result_file, fieldnames=post.keys()) 
