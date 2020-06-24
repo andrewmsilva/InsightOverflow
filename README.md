@@ -10,7 +10,7 @@ This step uses the Redis database and, therefore, it is necessary to install, co
 
 ```
 $ cd app
-$ python3 extraction.py
+$ python3 data-extraction.py
 Extraction started
   Extracted: 25671897
   Ignored: 22259204
