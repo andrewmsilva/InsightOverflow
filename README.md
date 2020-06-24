@@ -21,7 +21,7 @@ Done in 10066.4377 seconds
 ## Preprocessing
 ```
 $ cd app
-$ python3 cleaning.py
+$ python3 data-cleaning.py
 Cleaning started
 Done in 137056.3561 seconds
 ```
