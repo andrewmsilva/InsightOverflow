@@ -10,7 +10,8 @@ print('Enrichment started')
 start_time = time()
 
 # Train Phrases model
-bigram_model = Phrases(read_posts(clean_posts_csv, attribute='body', split=True), min_count=1)
+posts_stream = read_posts(clean_posts_csv, attribute='body', split=True)
+bigram_model = Phrases(posts_stream, min_count=1)
 
 # Create CSV
 with open(data_folder+clean_posts_csv, 'w', errors='surrogatepass') as result_file:
@@ -18,7 +19,8 @@ with open(data_folder+clean_posts_csv, 'w', errors='surrogatepass') as result_fi
     writer.writeheader()
 
 # Make bi-grams
-for post in read_posts(clean_posts_csv):
+posts_stream = read_posts(clean_posts_csv)
+for post in posts_stream:
     # Concatenate bi-grams
     post['body'] = post['body'].split()
     bigrams = [ bigram for bigram in bigram_model[post['body']] if '_' in bigram ]
