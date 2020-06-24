@@ -1,6 +1,6 @@
 from settings import *
 
-from csv import DictReader, DictWriter
+from csv import DictWriter
 from bs4 import BeautifulSoup
 
 from gensim.utils import simple_preprocess
@@ -34,19 +34,18 @@ with open(data_folder+clean_posts_csv, 'w', errors='surrogatepass') as result_fi
 
 # Clean posts
 word_net = WordNetLemmatizer()
-with open(data_folder+posts_csv, "r") as csv_file:
-    for post in DictReader(csv_file):
-        # Remove HTML tags
-        soup = BeautifulSoup(post['body'], 'lxml')
-        for tag in soup.find_all('code'):
-            tag.decompose()
-        post['body'] = soup.get_text().replace('\n', ' ').replace('\r', '')
-        # Tokenize, remove stopwords and lemmatize
-        post['body'] = [ word_net.lemmatize(token, pos=getPOS(token)) for token in simple_preprocess(post['body'], deacc=True) if token not in STOPWORDS ]
-        post['body'] = ' '.join(post['body'])
-        # Write in CSV
-        with open(data_folder+clean_posts_csv, 'a', errors='surrogatepass') as result_file:
-            writer = DictWriter(result_file, fieldnames=posts_header) 
-            writer.writerow(post)
+for post in read_posts(posts_csv):
+    # Remove HTML tags
+    soup = BeautifulSoup(post['body'], 'lxml')
+    for tag in soup.find_all('code'):
+        tag.decompose()
+    post['body'] = soup.get_text().replace('\n', ' ').replace('\r', '')
+    # Tokenize, remove stopwords and lemmatize
+    post['body'] = [ word_net.lemmatize(token, pos=getPOS(token)) for token in simple_preprocess(post['body'], deacc=True) if token not in STOPWORDS ]
+    post['body'] = ' '.join(post['body'])
+    # Write in CSV
+    with open(data_folder+clean_posts_csv, 'a', errors='surrogatepass') as result_file:
+        writer = DictWriter(result_file, fieldnames=posts_header) 
+        writer.writerow(post)
 
 print('Done in {:0.4f} seconds'.format(time() - start_time))
