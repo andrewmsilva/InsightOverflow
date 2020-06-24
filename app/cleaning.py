@@ -1,4 +1,5 @@
-from time import time
+from settings import *
+
 from csv import DictReader, DictWriter
 from bs4 import BeautifulSoup
 
@@ -12,7 +13,7 @@ from gensim.parsing.preprocessing import STOPWORDS
 from nltk import WordNetLemmatizer, pos_tag
 from nltk.corpus import wordnet
 
-print('Preprocessing started')
+print('Cleaning started')
 start_time = time()
 
 # Create function that get part of speech
@@ -26,20 +27,14 @@ def getPOS(token):
     }
     return tag_dict.get(tag, wordnet.NOUN)
 
-# Settings
-path = '../data/'
-source_file = 'posts>=0.csv'
-results_file = 'preprocessedd-'+source_file
-columns = ['id', 'date', 'author', 'body']
-word_net = WordNetLemmatizer()
-
 # Create CSV
-with open(path+results_file, 'w', errors='surrogatepass') as result_file:
-    writer = DictWriter(result_file, fieldnames=columns) 
+with open(data_path+clean_posts_csv, 'w', errors='surrogatepass') as result_file:
+    writer = DictWriter(result_file, fieldnames=posts_header) 
     writer.writeheader()
 
-# Read posts
-with open(path+source_file, "r") as csv_file:
+# Clean posts
+word_net = WordNetLemmatizer()
+with open(data_path+posts_csv, "r") as csv_file:
     for post in DictReader(csv_file):
         # Remove HTML tags
         soup = BeautifulSoup(post['body'], 'lxml')
@@ -50,8 +45,8 @@ with open(path+source_file, "r") as csv_file:
         post['body'] = [ word_net.lemmatize(token, pos=getPOS(token)) for token in simple_preprocess(post['body'], deacc=True) if token not in STOPWORDS ]
         post['body'] = ' '.join(post['body'])
         # Write in CSV
-        with open(path+results_file, 'a', errors='surrogatepass') as result_file:
-            writer = DictWriter(result_file, fieldnames=post.keys()) 
+        with open(data_path+clean_posts_csv, 'a', errors='surrogatepass') as result_file:
+            writer = DictWriter(result_file, fieldnames=posts_header) 
             writer.writerow(post)
 
 print('Done in {:0.4f} seconds'.format(time() - start_time))
