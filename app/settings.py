@@ -6,15 +6,15 @@ from csv import DictReader
 data_folder = '../data/'
 results_folder = '../results/'
 
-# Files
+# Data files
 posts_xml = 'posts.xml'
 posts_csv = 'posts.csv'
 clean_posts_csv = 'clean-' + posts_csv
-enriched_post_csv = 'enriched-'  + posts_csv
-
+enriched_posts_csv = 'enriched-'  + posts_csv
 posts_header = ['date', 'author', 'body']
 
-# Itarable of posts
+
+# Iterable of posts
 def read_posts(csv_file, attribute=None, split=False):
     with open(data_folder+csv_file, "r") as csv_file:
         for post in DictReader(csv_file):

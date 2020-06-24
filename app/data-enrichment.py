@@ -27,7 +27,7 @@ for post in posts_stream:
     post['body'] += bigrams
     # Write in CSV
     post['body'] = ' '.join(post['body'])
-    with open(data_folder+enriched_post_csv, 'a', errors='surrogatepass') as csv_file:
+    with open(data_folder+enriched_posts_csv, 'a', errors='surrogatepass') as csv_file:
         writer = DictWriter(result_file, fieldnames=posts_header) 
         writer.writerow(post)
 
