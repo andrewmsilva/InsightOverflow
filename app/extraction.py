@@ -34,9 +34,9 @@ for event, element in etree.iterparse(data_folder+posts_xml, tag='row'):
             tags = redis.get(parent)
             if type(tags) != str:
                 tags = ''
-        # Filter score
+        # Filter
         score = int(element.get('Score'))
-        if score > 0:
+        if score > 0 and 'OwnerUserId' in element.keys():
             # Get title
             title = ''
             if post_type == 1:
