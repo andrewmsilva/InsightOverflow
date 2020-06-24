@@ -2,7 +2,6 @@ from settings import *
 
 from lxml import etree
 from csv import DictWriter
-from time import time
 from redis import Redis
 
 print('Extraction started')

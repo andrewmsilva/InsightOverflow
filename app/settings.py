@@ -1,3 +1,6 @@
+# Common imports
+from time import time
+
 # Folders
 data_folder = '../data/'
 results_folder = '../results/'
