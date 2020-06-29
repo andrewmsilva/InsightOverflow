@@ -18,10 +18,22 @@ Extraction started
 Done in 10066.4377 seconds
 ```
 
-## Preprocessing
+## Pre-processing
+
+### Cleaning
+
 ```
 $ cd app
 $ python3 data-cleaning.py
 Cleaning started
 Done in 137056.3561 seconds
+```
+
+### Enrichment
+
+```
+$ cd app
+$ python3 data-enrichment.py
+Enrichment started
+Done in 7599.4961 seconds
 ```
