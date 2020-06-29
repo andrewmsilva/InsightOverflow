@@ -10,7 +10,7 @@ This step uses the Redis database and, therefore, it is necessary to install, co
 
 ```
 $ cd app
-$ python3 data-extraction.py
+$ python3 extraction.py
 Extraction started
   Extracted: 25671897
   Ignored: 22259204
@@ -24,7 +24,7 @@ Done in 10066.4377 seconds
 
 ```
 $ cd app
-$ python3 data-cleaning.py
+$ python3 cleaning.py
 Cleaning started
 Done in 137056.3561 seconds
 ```
@@ -33,7 +33,7 @@ Done in 137056.3561 seconds
 
 ```
 $ cd app
-$ python3 data-enrichment.py
+$ python3 enrichment.py
 Enrichment started
 Done in 7599.4961 seconds
 ```
