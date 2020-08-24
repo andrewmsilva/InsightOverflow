@@ -6,8 +6,7 @@ from gensim.models import Phrases
 from gensim.models.phrases import Phraser
 from gensim.corpora import Dictionary
 
-print('Enrichment started')
-start_time = time()
+start('Enrichment')
 
 # Train Phrases model
 posts_stream = read_posts(clean_posts_csv, attribute='body', split=True)
@@ -31,4 +30,4 @@ for post in posts_stream:
         writer = DictWriter(result_file, fieldnames=posts_header) 
         writer.writerow(post)
 
-print('Done in {:0.4f} seconds'.format(time() - start_time))
+end()

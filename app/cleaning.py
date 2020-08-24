@@ -13,8 +13,7 @@ from gensim.parsing.preprocessing import STOPWORDS
 from nltk import WordNetLemmatizer, pos_tag
 from nltk.corpus import wordnet
 
-print('Cleaning started')
-start_time = time()
+start('Cleaning')
 
 # Create function that get part of speech
 def getPOS(token):
@@ -48,4 +47,4 @@ for post in read_posts(posts_csv):
         writer = DictWriter(result_file, fieldnames=posts_header) 
         writer.writerow(post)
 
-print('Done in {:0.4f} seconds'.format(time() - start_time))
+end()

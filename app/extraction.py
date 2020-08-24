@@ -4,8 +4,7 @@ from lxml import etree
 from csv import DictWriter
 from redis import Redis
 
-print('Extraction started')
-start_time = time()
+start("Extraction")
 
 # Connect to Redis
 redis = Redis(host='localhost', port=6379, decode_responses=True)
@@ -61,4 +60,5 @@ for event, element in etree.iterparse(data_folder+posts_xml, tag='row'):
 print('  Extracted:', extracted_count)
 print('  Ignored:', total_count - extracted_count)
 print('  Total:', total_count)
-print('Done in {:0.4f} seconds'.format(time() - start_time))
+
+end()
