@@ -13,10 +13,10 @@ from gensim.parsing.preprocessing import STOPWORDS
 from nltk import WordNetLemmatizer, pos_tag
 from nltk.corpus import wordnet
 
-start('Cleaning')
+start_time = start_process('Cleaning')
 
 # Create function that get part of speech
-def getPOS(token):
+def get_pos(token):
     tag = pos_tag([token])[0][1][0].upper()
     tag_dict = {
       "J": wordnet.ADJ,
@@ -35,16 +35,16 @@ with open(data_folder+clean_posts_csv, 'w', errors='surrogatepass') as result_fi
 word_net = WordNetLemmatizer()
 for post in read_posts(posts_csv):
     # Remove HTML tags
-    soup = BeautifulSoup(post['body'], 'lxml')
+    soup = BeautifulSoup(post['content'], 'lxml')
     for tag in soup.find_all('code'):
         tag.decompose()
-    post['body'] = soup.get_text().replace('\n', ' ').replace('\r', '')
+    post['content'] = soup.get_text().replace('\n', ' ').replace('\r', '')
     # Tokenize, remove stopwords and lemmatize
-    post['body'] = [ word_net.lemmatize(token, pos=getPOS(token)) for token in simple_preprocess(post['body'], deacc=True) if token not in STOPWORDS ]
-    post['body'] = ' '.join(post['body'])
+    post['content'] = [ word_net.lemmatize(token, pos=get_pos(token)) for token in simple_preprocess(post['content'], deacc=True) if token not in STOPWORDS ]
+    post['content'] = ' '.join(post['content'])
     # Write in CSV
     with open(data_folder+clean_posts_csv, 'a', errors='surrogatepass') as result_file:
         writer = DictWriter(result_file, fieldnames=posts_header) 
         writer.writerow(post)
 
-end()
+end_process(start_time)
