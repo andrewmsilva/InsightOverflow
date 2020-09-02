@@ -1,19 +1,15 @@
 # Common imports
+from smart_open import open
 from time import time
 from csv import DictReader
 
 # Time counting
-start_time = None
-process_name = ""
+def start_process(process_name='Process'):
+    print(process_name, 'started')
+    return time()
 
-def start(process=""):
-    process_name = process
-    start_time = time()
-    print(process_name + ': started')
-
-def end():
-    execution_time = time() - start_time
-    print(process_name + ': done in %0.4f'%execution_time)
+def end_process(start_time):
+    print('  Done in %0.4f'%(time() - start_time))
 
 # Folders
 data_folder = '../data/'
@@ -24,7 +20,7 @@ posts_xml = 'posts.xml'
 posts_csv = 'posts.csv'
 clean_posts_csv = 'clean-' + posts_csv
 enriched_posts_csv = 'enriched-'  + posts_csv
-posts_header = ['date', 'author', 'body']
+posts_header = ['date', 'author', 'content']
 
 # Iterable of posts
 def read_posts(csv_file, attribute=None, split=False):
@@ -39,5 +35,6 @@ def read_posts(csv_file, attribute=None, split=False):
 
 # Results files
 dictionary_bin = 'dictionary.bin'
-tfidf_bin = 'tfidf.bin'
+tfidf_bin = 'tfidf-model.bin'
+corpus_mm = 'corpus.mm'
 topic_model_bin = 'topic-model.bin'
