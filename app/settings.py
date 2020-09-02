@@ -9,7 +9,10 @@ def start_process(process_name='Process'):
     return time()
 
 def end_process(start_time):
-    print('  Done in %0.4f'%(time() - start_time))
+    elapsed_time = time() - start_time
+    hours, rem = divmod(elapsed_time, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print('  Elapsed time: {:0>2}:{:0>2}:{:05.2f}'.format(int(hours), int(minutes), seconds))
 
 # Folders
 data_folder = '../data/'
