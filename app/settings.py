@@ -19,15 +19,15 @@ data_folder = '../data/'
 results_folder = '../results/'
 
 # Data files
-database_file = 'posts.xml'
-posts_file = 'posts.csv'
-clean_posts_file = 'clean-' + posts_file
-enriched_posts_file = 'enriched-'  + posts_file
+database_file = data_folder+'posts.xml'
+posts_file = data_folder+'posts.csv'
+clean_posts_file = data_folder+'clean-' + posts_file
+enriched_posts_file = data_folder+'enriched-'  + posts_file
 posts_header = ['date', 'author', 'content']
 
 # Iterable of posts
 def read_posts(csv_file, attribute=None, split=False):
-    with open(data_folder+csv_file, "r") as csv_file:
+    with open(csv_file, "r") as csv_file:
         for post in DictReader(csv_file):
             if attribute == None:
                 yield post
@@ -37,7 +37,7 @@ def read_posts(csv_file, attribute=None, split=False):
                 yield post[attribute]
 
 # Results files
-dictionary_file = 'dictionary.bin'
-tfidf_file = 'tfidf-model.bin'
-corpus_file = 'corpus.mm'
-topic_model_file = 'topic-model.bin'
+dictionary_file = data_folder+'dictionary.bin'
+tfidf_file = data_folder+'tfidf-model.bin'
+corpus_file = data_folder+'corpus.mm'
+topic_model_file = data_folder+'topic-model.bin'

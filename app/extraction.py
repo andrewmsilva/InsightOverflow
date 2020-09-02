@@ -10,14 +10,14 @@ start_time = start_process('Extraction')
 redis = Redis(host='localhost', port=6379, decode_responses=True)
 
 # Create CSV
-with open(data_folder+posts_file, 'w', errors='surrogatepass') as f:
+with open(posts_file, 'w', errors='surrogatepass') as f:
     writer = DictWriter(f, fieldnames=posts_header) 
     writer.writeheader()
 
 # Get posts
 extracted_count = 0
 total_count = 0
-for event, element in etree.iterparse(data_folder+database_file, tag='row'):
+for event, element in etree.iterparse(database_file, tag='row'):
     total_count += 1
     # Filter questions and answers
     post_type = int(element.get('PostTypeId'))
@@ -42,7 +42,7 @@ for event, element in etree.iterparse(data_folder+database_file, tag='row'):
             'content': element.get('Body') + ' ' + title + ' ' + tags
         }
         # Write in CSV
-        with open(data_folder+posts_file, 'a', errors='surrogatepass') as f:
+        with open(posts_file, 'a', errors='surrogatepass') as f:
             writer = DictWriter(f, fieldnames=posts_header) 
             writer.writerow(post)
         extracted_count += 1

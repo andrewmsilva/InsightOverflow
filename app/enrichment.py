@@ -13,7 +13,7 @@ posts = read_posts(clean_posts_file, 'content', True)
 bigram_model = Phrases(posts, min_count=1)
 
 # Create CSV
-with open(data_folder+enriched_posts_file, 'w', errors='surrogatepass') as result_file:
+with open(enriched_posts_file, 'w', errors='surrogatepass') as result_file:
     writer = DictWriter(result_file, fieldnames=posts_header) 
     writer.writeheader()
 
@@ -26,7 +26,7 @@ for post in posts:
     post['content'] += bigrams
     # Write in CSV
     post['content'] = ' '.join(post['content'])
-    with open(data_folder+enriched_posts_file, 'a', errors='surrogatepass') as result_file:
+    with open(enriched_posts_file, 'a', errors='surrogatepass') as result_file:
         writer = DictWriter(result_file, fieldnames=posts_header) 
         writer.writerow(post)
 
