@@ -37,7 +37,7 @@ def read_posts(csv_file, attribute=None, split=False):
                 yield post[attribute]
 
 # Results files
-dictionary_file = data_folder+'dictionary.bin'
-tfidf_file = data_folder+'tfidf-model.bin'
-corpus_file = data_folder+'corpus.mm'
-topic_model_file = data_folder+'topic-model.bin'
+dictionary_file = results_folder+'dictionary.bin'
+tfidf_file = results_folder+'tfidf-model.bin'
+corpus_file = results_folder+'corpus.mm'
+topic_model_file = results_folder+'topic-model.bin'
