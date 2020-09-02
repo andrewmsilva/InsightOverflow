@@ -14,17 +14,6 @@ def end_process(start_time):
     minutes, seconds = divmod(rem, 60)
     print('  Elapsed time: {:0>2}:{:0>2}:{:05.2f}'.format(int(hours), int(minutes), seconds))
 
-# Folders
-data_folder = '../data/'
-results_folder = '../results/'
-
-# Data files
-database_file = data_folder+'posts.xml'
-posts_file = data_folder+'posts.csv'
-clean_posts_file = data_folder+'clean-' + posts_file
-enriched_posts_file = data_folder+'enriched-'  + posts_file
-posts_header = ['date', 'author', 'content']
-
 # Iterable of posts
 def read_posts(csv_file, attribute=None, split=False):
     with open(csv_file, "r") as csv_file:
@@ -35,6 +24,17 @@ def read_posts(csv_file, attribute=None, split=False):
                 yield post[attribute].split()
             else:
                 yield post[attribute]
+
+# Folders
+data_folder = '../data/'
+results_folder = '../results/'
+
+# Data files
+database_file = data_folder+'posts.xml'
+posts_file = data_folder+'posts.csv'
+clean_posts_file = data_folder+'clean-posts.csv'
+enriched_posts_file = data_folder+'enriched-posts.csv'
+posts_header = ['date', 'author', 'content']
 
 # Results files
 dictionary_file = results_folder+'dictionary.bin'
