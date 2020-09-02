@@ -4,7 +4,7 @@ from lxml import etree
 from csv import DictWriter
 from redis import Redis
 
-start("Extraction")
+start_time = start_process('Extraction')
 
 # Connect to Redis
 redis = Redis(host='localhost', port=6379, decode_responses=True)
@@ -22,10 +22,12 @@ for event, element in etree.iterparse(data_folder+posts_xml, tag='row'):
     # Filter questions and answers
     post_type = int(element.get('PostTypeId'))
     if post_type == 1 or post_type == 2:
-        # Get and save tags
+        # Get title and save tags
+        title = ''
         tags = ''
         if post_type == 1:
             index = element.get('Id')
+            title = element.get('Title')
             tags = element.get('Tags').replace('>', ' ').replace('<', '')
             redis.set(index, tags)
         else:
@@ -33,24 +35,17 @@ for event, element in etree.iterparse(data_folder+posts_xml, tag='row'):
             tags = redis.get(parent)
             if type(tags) != str:
                 tags = ''
-        # Filter
-        score = int(element.get('Score'))
-        if score > 0 and 'OwnerUserId' in element.keys():
-            # Get title
-            title = ''
-            if post_type == 1:
-                title = element.get('Title')
-            # Get other information
-            post = {
-                'date': element.get('CreationDate')[:10],
-                'author': element.get('OwnerUserId'),
-                'body': element.get('Body') + ' ' + title + ' ' + tags
-            }
-            # Write in CSV
-            with open(data_folder+posts_csv, 'a', errors='surrogatepass') as f:
-                writer = DictWriter(f, fieldnames=posts_header) 
-                writer.writerow(post)
-            extracted_count += 1
+        # Get other information
+        post = {
+            'date': element.get('CreationDate')[:10],
+            'author': element.get('OwnerUserId'),
+            'content': element.get('Body') + ' ' + title + ' ' + tags
+        }
+        # Write in CSV
+        with open(data_folder+posts_csv, 'a', errors='surrogatepass') as f:
+            writer = DictWriter(f, fieldnames=posts_header) 
+            writer.writerow(post)
+        extracted_count += 1
     # Clear memory
     element.clear()
     for ancestor in element.xpath('ancestor-or-self::*'):
@@ -61,4 +56,4 @@ print('  Extracted:', extracted_count)
 print('  Ignored:', total_count - extracted_count)
 print('  Total:', total_count)
 
-end()
+end_process(start_time)
