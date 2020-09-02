@@ -19,10 +19,10 @@ data_folder = '../data/'
 results_folder = '../results/'
 
 # Data files
-posts_xml = 'posts.xml'
-posts_csv = 'posts.csv'
-clean_posts_csv = 'clean-' + posts_csv
-enriched_posts_csv = 'enriched-'  + posts_csv
+database_file = 'posts.xml'
+posts_file = 'posts.csv'
+clean_posts_file = 'clean-' + posts_file
+enriched_posts_file = 'enriched-'  + posts_file
 posts_header = ['date', 'author', 'content']
 
 # Iterable of posts

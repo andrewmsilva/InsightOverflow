@@ -27,13 +27,13 @@ def get_pos(token):
     return tag_dict.get(tag, wordnet.NOUN)
 
 # Create CSV
-with open(data_folder+clean_posts_csv, 'w', errors='surrogatepass') as result_file:
+with open(data_folder+clean_posts_file, 'w', errors='surrogatepass') as result_file:
     writer = DictWriter(result_file, fieldnames=posts_header) 
     writer.writeheader()
 
 # Clean posts
 word_net = WordNetLemmatizer()
-for post in read_posts(posts_csv):
+for post in read_posts(posts_file):
     # Remove HTML tags
     soup = BeautifulSoup(post['content'], 'lxml')
     for tag in soup.find_all('code'):
@@ -43,7 +43,7 @@ for post in read_posts(posts_csv):
     post['content'] = [ word_net.lemmatize(token, pos=get_pos(token)) for token in simple_preprocess(post['content'], deacc=True) if token not in STOPWORDS ]
     post['content'] = ' '.join(post['content'])
     # Write in CSV
-    with open(data_folder+clean_posts_csv, 'a', errors='surrogatepass') as result_file:
+    with open(data_folder+clean_posts_file, 'a', errors='surrogatepass') as result_file:
         writer = DictWriter(result_file, fieldnames=posts_header) 
         writer.writerow(post)
 
