@@ -1,4 +1,4 @@
-# TCC (an appropriate title will be created soon)
+# Tracking the evolution, loyalty, and drifting from Stack Overflow users' interests
 
 To run this experiment, it is necessary to download [Stack Overflow posts](https://archive.org/download/stackexchange/stackoverflow.com-Posts.7z) and extract the `.7z` file into the "data" folder. This step uses the Redis database and, therefore, it is necessary to install, configure, and start Redis before run extraction (a tutorial is found [here](https://redis.io/topics/quickstart)).
 
