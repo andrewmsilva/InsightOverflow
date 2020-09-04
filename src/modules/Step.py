@@ -4,9 +4,6 @@ class Step(object):
     stepName = 'Unamed step'
     executionTime = None
 
-    dataFolder = '../data/'
-    resultsFolder = '../results/'
-
     def __init__(self, stepName=None):
         if type(stepName) == str:
             self.stepName = stepName
@@ -24,7 +21,7 @@ class Step(object):
     
     def getFormatedExecutionTime(self):
         if self.executionTime:
-            hours, rem = divmod(elapsed_time, 3600)
+            hours, rem = divmod(self.executionTime, 3600)
             minutes, seconds = divmod(rem, 60)
             return '{:0>2}:{:0>2}:{:05.2f}'.format(int(hours), int(minutes), seconds)
         else:
