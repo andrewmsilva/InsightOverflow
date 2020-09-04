@@ -1,10 +1,24 @@
 from modules.Step import Step
 from modules.Data import Data, Posts, PreProcessedPosts
 
+from bs4 import BeautifulSoup
+from gensim.utils import simple_preprocess
+from gensim.parsing.preprocessing import STOPWORDS
+
+# from nltk import download
+# download('wordnet')
+# download('averaged_perceptron_tagger')
+
+from nltk import WordNetLemmatizer, pos_tag
+from nltk.corpus import wordnet
+
+from gensim.models import Phrases
+from gensim.models.phrases import Phraser
+from gensim.corpora import Dictionary
 from os import remove
 
 class PreProcessing(Step):
-    __tempFile = 'data/clean-posts.csv'
+    __tempFile = 'data/clean-posts.txt'
 
     def __init__(self):
         super().__init__('Pre-processing')
