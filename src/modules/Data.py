@@ -8,9 +8,12 @@ class Data(object):
         self.overwrite = overwrite
 
     def __iter__(self):
-        with open(self.outputFile, "r") as csv_file:
-            for data in csv.reader(csv_file):
-                yield data[0]
+        with open(self.outputFile, "r") as txt_file:
+            for data in txt_file:
+                try:
+                    yield int(data)
+                except:
+                    yield data
     
     def __len__(self):
         if not self.__length:
