@@ -1,6 +1,7 @@
 *.db
 *.csv
 *.xml
+*.txt
 *.bin
 *.bin.*
 mallet-*
