@@ -1,5 +1,5 @@
 from modules.Step import Step
-from modules.Data import Posts, Users, Dates
+from modules.Data import Contents, Users, Dates
 
 from lxml import etree
 from redis import Redis
@@ -14,9 +14,9 @@ class Extraction(Step):
         # Connect to Redis
         redis = Redis(host='localhost', port=6379, decode_responses=True)
         # Initialize data
-        posts = Posts(overwrite=True)
         users = Users(overwrite=True)
         dates = Dates(overwrite=True)
+        contents = Contents(overwrite=True)
         # Get posts
         total_count = 0
         for event, element in etree.iterparse(self.databaseFile, tag='row'):
@@ -32,28 +32,28 @@ class Extraction(Step):
                 continue
             dates.append(date)
             users.append(user)
-            # Get post
-            post = element.get('Body')
+            # Get content
+            content = element.get('Body')
             if post_type == 1:
                 # Concatenate title and tags
                 tags = element.get('Tags').replace('>', ' ').replace('<', '')
                 index = element.get('Id')
                 redis.set(index, tags)
-                post += ' ' + element.get('Title') + ' ' + tags
+                content += ' ' + element.get('Title') + ' ' + tags
             else:
                 # Concatenate tags
                 parent = element.get('ParentId')
                 tags = redis.get(parent)
                 if type(tags) == str:
-                    post += ' ' + tags
-            post = post.replace('\n', ' ').replace('\r', '')
-            posts.append(post)
+                    content += ' ' + tags
+            content = content.replace('\n', ' ').replace('\r', '')
+            contents.append(content)
             # Clear memory
             element.clear()
             for ancestor in element.xpath('ancestor-or-self::*'):
                 while ancestor.getprevious() is not None:
                     del ancestor.getparent()[0]
 
-        print('  Extracted:', len(posts))
-        print('  Ignored:', total_count - len(posts))
+        print('  Extracted:', len(contents))
+        print('  Ignored:', total_count - len(contents))
         print('  Total:', total_count)

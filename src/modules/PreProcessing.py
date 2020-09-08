@@ -1,5 +1,5 @@
 from modules.Step import Step
-from modules.Data import Data, Posts, PreProcessedPosts
+from modules.Data import Data, Contents, PreProcessedContents
 
 from bs4 import BeautifulSoup
 from gensim.utils import simple_preprocess
@@ -18,7 +18,7 @@ from gensim.corpora import Dictionary
 from os import remove
 
 class PreProcessing(Step):
-    __tempFile = 'data/clean-posts.txt'
+    __tempFile = 'data/clean-contents.txt'
 
     def __init__(self):
         super().__init__('Pre-processing')
@@ -35,33 +35,33 @@ class PreProcessing(Step):
     
     def __cleaning(self):
         word_net = WordNetLemmatizer()
-        posts = Posts()
-        clean_posts = Data(self.__tempFile, overwrite=True)
-        for post in posts:
+        contents = Contents()
+        clean_contents = Data(self.__tempFile, overwrite=True)
+        for content in contents:
             # Remove HTML tags
-            soup = BeautifulSoup(post, 'lxml')
+            soup = BeautifulSoup(content, 'lxml')
             for tag in soup.find_all('code'):
                 tag.decompose()
-            post = soup.get_text()
+            content = soup.get_text()
             # Tokenize, remove stopwords and lemmatize
-            post = [ word_net.lemmatize(token, pos=self.__getPOS(token)) for token in simple_preprocess(post, deacc=True) if token not in STOPWORDS ]
-            post = ' '.join(post)
-            clean_posts.append(post)
+            content = [ word_net.lemmatize(token, pos=self.__getPOS(token)) for token in simple_preprocess(content, deacc=True) if token not in STOPWORDS ]
+            content = ' '.join(content)
+            clean_contents.append(content)
 
     def __enrichment(self):
         # Train Phrases model
-        clean_posts = Data(self.__tempFile)
-        bigram_model = Phrases(clean_posts, min_count=1)
+        clean_contents = Data(self.__tempFile)
+        bigram_model = Phrases(clean_contents, min_count=1)
 
         # Make bi-grams
-        pre_processed_posts = PreProcessedPosts(overwrite=True)
-        for post in clean_posts:
+        pre_processed_contents = PreProcessedContents(overwrite=True)
+        for content in clean_contents:
             # Concatenate bi-grams
-            post = post.split()
-            bigrams = [ bigram for bigram in bigram_model[post] if '_' in bigram ]
-            post += bigrams
-            post = ' '.join(post)
-            pre_processed_posts.append(post)
+            content = content.split()
+            bigrams = [ bigram for bigram in bigram_model[content] if '_' in bigram ]
+            content += bigrams
+            content = ' '.join(content)
+            pre_processed_contents.append(content)
         # Remove temporary file
         remove(self.__tempFile)
 

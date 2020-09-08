@@ -3,7 +3,7 @@ from smart_open import open
 class Data(object):
     __length = None
 
-    def __init__(self, output_file, overwrite):
+    def __init__(self, output_file, overwrite=False):
         self.outputFile = output_file
         self.overwrite = overwrite
 
@@ -41,10 +41,10 @@ class Dates(Data):
     def __init__(self, overwrite=False):
         super().__init__('data/dates.txt', overwrite)
 
-class Posts(Data):
+class Contents(Data):
     def __init__(self, overwrite=False):
-        super().__init__('data/posts.txt', overwrite)
+        super().__init__('data/contents.txt', overwrite)
 
-class PreProcessedPosts(Data):
+class PreProcessedContents(Data):
     def __init__(self, overwrite=False):
-        super().__init__('data/pre-processed-posts.txt', overwrite)
+        super().__init__('data/pre-processed-contents.txt', overwrite)
