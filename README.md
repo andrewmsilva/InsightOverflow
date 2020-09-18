@@ -11,3 +11,10 @@ Extraction started
   Total: 49139907
 Execution time: 05:00:00.27
 ```
+
+## Pre-processing
+
+```
+Pre-processing started
+Execution time: 69:40:57.67
+```
