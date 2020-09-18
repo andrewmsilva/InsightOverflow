@@ -1,6 +1,6 @@
 from smart_open import open
 
-class Data(object):
+class StreamData(object):
     __length = None
 
     def __init__(self, output_file, overwrite=False):
@@ -33,18 +33,18 @@ class Data(object):
             txt_file.write(str(data)+'\n')
             self.__length += 1
 
-class Users(Data):
+class Users(StreamData):
     def __init__(self, overwrite=False):
         super().__init__('data/users.txt', overwrite)
 
-class Dates(Data):
+class Dates(StreamData):
     def __init__(self, overwrite=False):
         super().__init__('data/dates.txt', overwrite)
 
-class Contents(Data):
+class Contents(StreamData):
     def __init__(self, overwrite=False):
         super().__init__('data/contents.txt', overwrite)
 
-class PreProcessedContents(Data):
+class PreProcessedContents(StreamData):
     def __init__(self, overwrite=False):
         super().__init__('data/pre-processed-contents.txt', overwrite)

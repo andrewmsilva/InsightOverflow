@@ -1,5 +1,5 @@
 from modules.Step import Step
-from modules.Data import Data, Contents, PreProcessedContents
+from modules.StreamData import StreamData, Contents, PreProcessedContents
 
 from bs4 import BeautifulSoup
 from gensim.utils import simple_preprocess
@@ -14,7 +14,6 @@ from nltk.corpus import wordnet
 
 from gensim.models import Phrases
 from gensim.models.phrases import Phraser
-from gensim.corpora import Dictionary
 from os import remove
 
 class PreProcessing(Step):
@@ -36,7 +35,7 @@ class PreProcessing(Step):
     def __cleaning(self):
         word_net = WordNetLemmatizer()
         contents = Contents()
-        clean_contents = Data(self.__tempFile, overwrite=True)
+        clean_contents = StreamData(self.__tempFile, overwrite=True)
         for content in contents:
             # Remove HTML tags
             soup = BeautifulSoup(content, 'lxml')
@@ -50,7 +49,7 @@ class PreProcessing(Step):
 
     def __enrichment(self):
         # Train Phrases model
-        clean_contents = Data(self.__tempFile)
+        clean_contents = StreamData(self.__tempFile)
         bigram_model = Phrases(clean_contents, min_count=1)
 
         # Make bi-grams
