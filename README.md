@@ -1,6 +1,7 @@
-# Tracking the evolution, loyalty, and drifting from Stack Overflow users' interests
+# An exploratory analysis employing topic modeling: Tracking evolution and loyalty from Stack Overflow users' interests
 
-To run this experiment, it is necessary to download [Stack Overflow posts](https://archive.org/download/stackexchange/stackoverflow.com-Posts.7z) and extract the `.7z` file into the "data" folder. This step uses the Redis database and, therefore, it is necessary to install, configure, and start Redis before run extraction (a tutorial is found [here](https://redis.io/topics/quickstart)).
+
+Running this experiment requires downloading Stack Overflow posts from the [data dump](https://archive.org/download/stackexchange/stackoverflow.com-Posts.7z) and extract the `.7z` file into ```src/data/```. As this algorithm employs Redis database for extraction step, installing, configuring, and starting Redis is essential (a tutorial is found [here](https://redis.io/topics/quickstart)).
 
 ## Extraction
 
