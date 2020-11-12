@@ -1,19 +1,23 @@
 from smart_open import open
 
 class StreamData(object):
-    __length = None
 
-    def __init__(self, output_file, overwrite=False):
-        self.outputFile = output_file
-        self.overwrite = overwrite
+    def __init__(self, output_file, overwrite=False, splitted=False):
+        self.__length = None
+        self.__outputFile = output_file
+        self.__overwrite = overwrite
+        self.__splitted = splitted
 
     def __iter__(self):
-        with open(self.outputFile, "r") as txt_file:
+        with open(self.__outputFile, "r") as txt_file:
             for data in txt_file:
                 try:
                     yield int(data)
                 except:
-                    yield data
+                    if self.__splitted:
+                        yield data.split()
+                    else:
+                        yield data
     
     def __len__(self):
         if not self.__length:
@@ -24,27 +28,27 @@ class StreamData(object):
     
     def append(self, data):
         mode = 'a'
-        if self.overwrite:
-            self.overwrite = False
+        if self.__overwrite:
+            self.__overwrite = False
             self.__length = 0
             mode = 'w'
 
-        with open(self.outputFile, mode, errors='surrogatepass') as txt_file:
+        with open(self.__outputFile, mode, errors='surrogatepass') as txt_file:
             txt_file.write(str(data)+'\n')
             self.__length += 1
 
 class Users(StreamData):
-    def __init__(self, overwrite=False):
-        super().__init__('data/users.txt', overwrite)
+    def __init__(self, overwrite=False, splitted=False):
+        super().__init__('data/users.txt', overwrite, splitted)
 
 class Dates(StreamData):
-    def __init__(self, overwrite=False):
-        super().__init__('data/dates.txt', overwrite)
+    def __init__(self, overwrite=False, splitted=False):
+        super().__init__('data/dates.txt', overwrite, splitted)
 
 class Contents(StreamData):
-    def __init__(self, overwrite=False):
-        super().__init__('data/contents.txt', overwrite)
+    def __init__(self, overwrite=False, splitted=False):
+        super().__init__('data/contents.txt', overwrite, splitted)
 
 class PreProcessedContents(StreamData):
-    def __init__(self, overwrite=False):
-        super().__init__('data/pre-processed-contents.txt', overwrite)
+    def __init__(self, overwrite=False, splitted=False):
+        super().__init__('data/pre-processed-contents.txt', overwrite, splitted)
