@@ -5,10 +5,10 @@ from lxml import etree
 from redis import Redis
 
 class Extraction(Step):
-    databaseFile = 'data/posts.xml'
 
     def __init__(self):
         super().__init__('Extraction')
+        self.databaseFile = 'data/posts.xml'
 
     def _process(self):
         # Connect to Redis
