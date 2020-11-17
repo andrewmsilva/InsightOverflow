@@ -55,11 +55,7 @@ class PreProcessing(Step):
         # Make bi-grams
         pre_processed_contents = PreProcessedContents(overwrite=True)
         for content in clean_contents:
-            # Concatenate bi-grams
-            content = content.split()
-            bigrams = [ bigram for bigram in bigram_model[content] if '_' in bigram ]
-            content += bigrams
-            content = ' '.join(content)
+            content = ' '.join(bigram_model[content.split()])
             pre_processed_contents.append(content)
         # Remove temporary file
         remove(self.__tempFile)
