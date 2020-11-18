@@ -4,6 +4,7 @@ from modules.StreamData import PreProcessedContents
 from gensim.corpora import Dictionary
 from gensim.models import TfidfModel, LdaModel
 from gensim.models.wrappers import LdaMallet
+from gensim.models.nmf import Nmf
 
 class Corpus(object):
 
@@ -60,5 +61,14 @@ class TopicModeling(Step):
             id2word=self.__dictionary,
             num_topics=num_topics,
             random_seed=10
+        )
+        return model
+    
+    def buildNMF(self, num_topics):
+        model = Nmf(
+            self.__corpus,
+            id2word=self.__dictionary,
+            num_topics=num_topics,
+            random_state=10
         )
         return model
