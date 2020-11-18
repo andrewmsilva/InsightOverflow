@@ -3,6 +3,7 @@ from modules.StreamData import PreProcessedContents
 
 from gensim.corpora import Dictionary
 from gensim.models import TfidfModel, LdaModel
+from gensim.models.wrappers import LdaMallet
 
 class Corpus(object):
 
@@ -43,9 +44,21 @@ class TopicModeling(Step):
         self.__corpus = Corpus(tfidf)
 
     def __buildLda(self, num_topics):
-        self.__model = LdaModel(
+        model = LdaModel(
             self.__corpus,
             id2word=self.__dictionary,
             num_topics=num_topics,
             random_seed=10
         )
+        return model
+    
+    def __buildMalletLda(self, num_topics):
+        mallet_path = "modules/mallet-2.0.8/bin/"
+        model = LdaMallet(
+            mallet_path,
+            corpus=self.__corpus,
+            id2word=self.__dictionary,
+            num_topics=num_topics,
+            random_seed=10
+        )
+        return model
