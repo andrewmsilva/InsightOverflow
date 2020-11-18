@@ -64,7 +64,7 @@ class TopicModeling(Step):
         )
         return model
     
-    def buildNMF(self, num_topics):
+    def __buildNMF(self, num_topics):
         model = Nmf(
             self.__corpus,
             id2word=self.__dictionary,
