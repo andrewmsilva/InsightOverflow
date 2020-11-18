@@ -2,7 +2,7 @@ from modules.Step import Step
 from modules.StreamData import PreProcessedContents
 
 from gensim.corpora import Dictionary
-from gensim.models import TfidfModel, LdaModel
+from gensim.models import TfidfModel, LdaModel, CoherenceModel
 from gensim.models.wrappers import LdaMallet
 from gensim.models.nmf import Nmf
 
@@ -72,3 +72,8 @@ class TopicModeling(Step):
             random_state=10
         )
         return model
+    
+    def __computeCoherence(self, model):
+        coherence_model = CoherenceModel(model=model, texts=self.__contents, coherence='c_v')
+        coherence = coherence_model.get_coherence()
+        return coherence
