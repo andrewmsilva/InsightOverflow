@@ -2,7 +2,7 @@ from modules.Step import Step
 from modules.StreamData import PreProcessedContents
 
 from gensim.corpora import Dictionary
-from gensim.models import TfidfModel
+from gensim.models import TfidfModel, LdaModel
 
 class Corpus(object):
 
@@ -41,3 +41,11 @@ class TopicModeling(Step):
     def __buildTfidf(self):
         self.__tfidf = TfidfModel(self.__buildBow())
         self.__corpus = Corpus(tfidf)
+
+    def __buildLda(self, num_topics):
+        self.__model = LdaModel(
+            self.__corpus,
+            id2word=self.__dictionary,
+            num_topics=num_topics,
+            random_seed=10
+        )
