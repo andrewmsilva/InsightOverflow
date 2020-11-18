@@ -77,3 +77,8 @@ class TopicModeling(Step):
         coherence_model = CoherenceModel(model=model, texts=self.__contents, coherence='c_v')
         coherence = coherence_model.get_coherence()
         return coherence
+    
+    def __printTopics(self):
+        print('  Topics')
+        for idx, topic in self.__lda.print_topics(-1):
+            print('    {}: {}'.format(idx, topic))
