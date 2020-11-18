@@ -27,3 +27,17 @@ class TopicModeling(Step):
         self.__tfidf = None
         self.__corpus = None
         self.__experiments = []
+    
+    def __buildDictionary(self, no_below=None, no_above=None, keep_n=None):
+        self.__dictionary = Dictionary(self.__contents)
+        if no_below != None and no_above != None and keep_n != None:
+            self.__dictionary.filter_extremes(no_below=no_below, no_above=no_above, keep_n=keep_n)
+
+    def __buildBow(self):
+        if self.__dictionary != None:
+            for content in self.__contents:
+                yield self.__dictionary.doc2bow(content)
+    
+    def __buildTfidf(self):
+        self.__tfidf = TfidfModel(self.__buildBow())
+        self.__corpus = Corpus(tfidf)
