@@ -7,15 +7,15 @@ Running this experiment requires downloading Stack Overflow posts from the [data
 
 ```
 Extraction started
-  Extracted: 48428207
-  Ignored: 711700
-  Total: 49139907
-Execution time: 05:00:00.27
+  Extracted: 49598818
+  Ignored: 739023
+  Total: 50337841
+Execution time: 05:39:07.74
 ```
 
 ## Pre-processing
 
 ```
 Pre-processing started
-Execution time: 69:40:57.67
+Execution time: 74:53:18.44
 ```
