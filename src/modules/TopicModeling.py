@@ -8,12 +8,14 @@ from gensim.models.nmf import Nmf
 
 class Corpus(object):
 
-    def __init__(self, tfidf):
+    def __init__(self, tfidf, bow, length):
         self.__tfidf = tfidf
-
+        self.__bow = bow
+        self.__len = length
+        
     def __iter__(self):
-        for i in range(self.__len):
-            yield self.__tfidf[bow_corpus[i]]
+        for content in self.__bow():
+            yield self.__tfidf[content]
 
     def __len__(self):
         return self.__len
@@ -25,7 +27,6 @@ class TopicModeling(Step):
 
         self.__contents = PreProcessedContents(splitted=True)
         self.__dictionary = None
-        self.__lda = None
         self.__tfidf = None
         self.__corpus = None
         self.__experiments = []
@@ -42,14 +43,14 @@ class TopicModeling(Step):
     
     def __buildTfidf(self):
         self.__tfidf = TfidfModel(self.__buildBow())
-        self.__corpus = Corpus(tfidf)
+        self.__corpus = Corpus(self.__tfidf, self.__buildBow, len(self.__contents))
 
     def __buildLda(self, num_topics):
         model = LdaModel(
             self.__corpus,
             id2word=self.__dictionary,
             num_topics=num_topics,
-            random_seed=10
+            random_state=10
         )
         return model
     
@@ -73,12 +74,55 @@ class TopicModeling(Step):
         )
         return model
     
+    def __buildTopicModel(self, model_name, *args):
+        model = None
+        if model_name == 'lda':
+            model = self.__buildLda(*args)
+        elif model_name == 'mallet':
+            model = self.__buildMalletLda(*args)
+        elif model_name == 'nmf':
+            model = self.__build(*args)
+        return model
+
     def __computeCoherence(self, model):
         coherence_model = CoherenceModel(model=model, texts=self.__contents, coherence='c_v')
         coherence = coherence_model.get_coherence()
         return coherence
     
-    def __printTopics(self):
+    def __printTopics(self, model):
         print('  Topics')
-        for idx, topic in self.__lda.print_topics(-1):
+        for idx, topic in model.print_topics(-1):
             print('    {}: {}'.format(idx, topic))
+    
+    def __runExperiment(self, no_below, no_above, keep_n, num_topics, model_name):
+        print('Staring experiment:', no_below, no_above, keep_n, num_topics, model_name)
+
+        print('Building dictionary')
+        self.__buildDictionary(no_below, no_above, keep_n)
+
+        print('Building TF-IDF')
+        self.__buildTfidf()
+
+        print('Building topic model')
+        model = self.__buildTopicModel(model_name, num_topics)
+        self.__printTopics(model)
+
+        print('Building coherence')
+        coherence = self.__computeCoherence(model)
+
+        self.__experiments.append(((no_below, no_above, keep_n, num_topics, model), coherence))
+        print(self.__experiments[-1], '\n')
+    
+    def _process(self):
+        # Dictionary parameters
+        no_below_list = [20]
+        no_above_list = [0.4]
+        keep_n_list = [4000]
+        num_topics_list = [20]
+        model_list = ['lda']
+        for no_below in no_below_list:
+            for no_above in no_above_list:
+                for keep_n in keep_n_list:
+                    for num_topics in num_topics_list:
+                        for model in model_list:
+                            self.__runExperiment(no_below, no_above, keep_n, num_topics, model)
