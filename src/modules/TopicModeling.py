@@ -29,8 +29,17 @@ class TopicModeling(Step):
 
         self.__contents = PreProcessedContents(splitted=True)
         self.__dictionary = None
+        self.__dictionaryFile = 'results/dictionary.bin'
+
         self.__tfidf = None
+        self.__tfidfFile = 'results/tfidf.bin'
+
         self.__corpus = None
+        self.__model = None
+        self.__modelFile = 'results/model.bin'
+
+        self.__experiments = pd.DataFrame(columns=['no_below', 'no_above', 'keep_n', 'num_topics', 'model_name', 'coherence'])
+        self.__experimentsFile = 'results/experiments.csv'
 
     # Corpus methods
 
@@ -55,55 +64,68 @@ class TopicModeling(Step):
     # Topic modeling methods
 
     def __buildLDA(self, num_topics):
-        model = LdaModel(
+        self.__model = LdaModel(
             self.__corpus,
             id2word=self.__dictionary,
             num_topics=num_topics,
             random_state=10
         )
-        return model
     
     def __buildMalletLDA(self, num_topics):
         mallet_path = "modules/mallet-2.0.8/bin/"
-        model = LdaMallet(
+        self.__model = LdaMallet(
             mallet_path,
             corpus=self.__corpus,
             id2word=self.__dictionary,
             num_topics=num_topics,
             random_seed=10
         )
-        return model
     
     def __buildNMF(self, num_topics):
-        model = Nmf(
+        self.__model = Nmf(
             self.__corpus,
             id2word=self.__dictionary,
             num_topics=num_topics,
             random_state=10
         )
-        return model
     
     def __buildTopicModel(self, model_name, *args):
-        model = None
         if model_name == 'lda':
-            model = self.__buildLDA(*args)
+            self.__buildLDA(*args)
         elif model_name == 'mallet':
-            model = self.__buildMalletLDA(*args)
+            self.__buildMalletLDA(*args)
         elif model_name == 'nmf':
-            model = self.__buildNMF(*args)
-        return model
+            self.__buildNMF(*args)
 
-    def __computeCoherence(self, model):
-        coherence_model = CoherenceModel(model=model, texts=self.__contents, coherence='c_v')
+    def __computeCoherence(self):
+        coherence_model = CoherenceModel(model=self.__model, texts=self.__contents, coherence='c_v')
         coherence = coherence_model.get_coherence()
         return coherence
     
-    def __printTopics(self, model):
+    def __printTopics(self):
         print('  Topics')
-        for idx, topic in model.print_topics(-1):
+        for idx, topic in self.__model.print_topics(-1):
             print('    {}: {}'.format(idx, topic))
     
-    # Main method
+    # Experiment methods
+
+    def __saveExperiment(self, no_below, no_above, keep_n, num_topics, model_name, coherence):
+        # Save model with greatest coherence
+        if self.__experiments.empty or self.__experiments.iloc[self.__experiments['coherence'].idxmax()]['coherence'] < coherence:
+            self.__dictionary.save(self.__dictionaryFile)
+            self.__tfidf.save(self.__tfidfFile)
+            self.__model.save(self.__modelFile)
+        # Save experiment to CSV
+        row = {
+            'no_below': no_below,
+            'no_above': no_above,
+            'keep_n': keep_n,
+            'num_topics': num_topics,
+            'model_name': model_name,
+            'coherence': coherence
+        }
+        self.__experiments = self.__experiments.append(row, ignore_index=True)
+        self.__experiments.to_csv(self.__experimentsFile)
     
     def _process(self):
         # Dictionary parameters
@@ -113,7 +135,7 @@ class TopicModeling(Step):
         # Topic model parameters
         num_topics_list = [10, 20, 40, 60, 80]
         model_name_list = ['lda', 'nmf']
-
+        # Starting experiments
         count = 0
         for no_below in no_below_list:
             for no_above in no_above_list:
@@ -122,8 +144,11 @@ class TopicModeling(Step):
                     self.__buildCorpus(no_below, no_above, keep_n)
                     for num_topics in num_topics_list:
                         for model_name in model_name_list:
-                            model = self.__buildTopicModel(model_name, num_topics)
-                            coherence = self.__computeCoherence(model)
-
+                            # Build topic model and compute coherence
+                            self.__buildTopicModel(model_name, num_topics)
+                            coherence = self.__computeCoherence()
+                            # Save experiment to file
+                            self.__saveExperiment(no_below, no_above, keep_n, num_topics, model_name, coherence)
+                            # Print some results
                             print('Experiment', count, 'presented coherence', coherence)
                             count += 1
