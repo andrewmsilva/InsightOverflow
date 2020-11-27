@@ -2,7 +2,7 @@ from modules.Step import Step
 from modules.StreamData import PreProcessedContents
 
 from gensim.corpora import Dictionary
-from gensim.models import TfidfModel, LdaModel, CoherenceModel
+from gensim.models import TfidfModel, LdaMulticore, CoherenceModel
 from gensim.models.wrappers import LdaMallet
 from gensim.models.nmf import Nmf
 
@@ -64,21 +64,12 @@ class TopicModeling(Step):
     # Topic modeling methods
 
     def __buildLDA(self, num_topics):
-        self.__model = LdaModel(
+        self.__model = LdaMulticore(
             self.__corpus,
             id2word=self.__dictionary,
             num_topics=num_topics,
+            workers=4,
             random_state=10
-        )
-    
-    def __buildMalletLDA(self, num_topics):
-        mallet_path = "modules/mallet-2.0.8/bin/"
-        self.__model = LdaMallet(
-            mallet_path,
-            corpus=self.__corpus,
-            id2word=self.__dictionary,
-            num_topics=num_topics,
-            random_seed=10
         )
     
     def __buildNMF(self, num_topics):
@@ -92,8 +83,6 @@ class TopicModeling(Step):
     def __buildTopicModel(self, model_name, *args):
         if model_name == 'lda':
             self.__buildLDA(*args)
-        elif model_name == 'mallet':
-            self.__buildMalletLDA(*args)
         elif model_name == 'nmf':
             self.__buildNMF(*args)
 
@@ -129,9 +118,9 @@ class TopicModeling(Step):
     
     def _process(self):
         # Dictionary parameters
-        no_below_list = [20]
-        no_above_list = [0.4]
-        keep_n_list = [4000]
+        no_below_list = [200]
+        no_above_list = [0.2, 0.4]
+        keep_n_list = [1000, 2000, 4000]
         # Topic model parameters
         num_topics_list = [10, 20, 40, 60, 80]
         model_name_list = ['lda', 'nmf']
