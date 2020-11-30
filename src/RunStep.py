@@ -1,8 +1,9 @@
 from modules.Extraction import Extraction
 from modules.PreProcessing import PreProcessing
 from modules.TopicModeling import TopicModeling
+from modules.PostProcessing import PostProcessing
 
-steps = [Extraction(), PreProcessing(), TopicModeling()]
+steps = [Extraction(), PreProcessing(), TopicModeling(), PostProcessing()]
 
 while True:
     print('\n')
@@ -15,8 +16,8 @@ while True:
     if step == '0':
         break
     elif step != '':
-        for i in range(len(steps)):
-            if str(i+1) == step:
-                steps[i].execute()
-                continue
-        print('\nStep not found')
+        step = int(step) - 1
+        if step in range(len(steps)):
+            steps[step].execute()
+        else:
+            print('\nStep not found')
