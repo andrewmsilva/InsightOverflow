@@ -10,7 +10,13 @@ class Stream(object):
 
     def __iter__(self):
         with open(self.__outputFile, "r") as txt_file:
+            count = None
+            if not self.__length:
+                count = 0
+
             for data in txt_file:
+                if count != None:
+                    count += 1
                 try:
                     yield int(data)
                 except:
@@ -18,6 +24,8 @@ class Stream(object):
                         yield data.split()
                     else:
                         yield data
+            if count != None:
+                self.__length = count
     
     def __len__(self):
         if not self.__length:
