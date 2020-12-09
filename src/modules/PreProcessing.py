@@ -4,6 +4,7 @@ from modules.Data import Stream, Contents, PreProcessedContents
 from bs4 import BeautifulSoup
 from gensim.utils import simple_preprocess
 from gensim.parsing.preprocessing import STOPWORDS
+import re
 
 # from nltk import download
 # download('wordnet')
@@ -17,10 +18,22 @@ from gensim.models.phrases import Phraser
 from os import remove
 
 class PreProcessing(Step):
-    __tempFile = 'data/clean-contents.txt'
 
     def __init__(self):
         super().__init__('Pre-processing')
+        self.__tempFile = 'data/clean-contents.txt'
+
+        self.__URLRegex = re.compile(r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))")
+        self.__WordRegex = re.compile(r"[^A-Za-záàâãéèêíïóôõöúçñÁÀÂÃÉÈÍÏÓÔÕÖÚÇÑ ]")
+
+        self.__lemmatizer = WordNetLemmatizer()
+
+    
+    def __clearHTML(self, content):
+        soup = BeautifulSoup(content, 'lxml')
+        for tag in soup.find_all('code'):
+            tag.decompose()
+        return soup.get_text()
     
     def __getPOS(self, token):
         tag = pos_tag([token])[0][1][0].upper()
@@ -32,19 +45,18 @@ class PreProcessing(Step):
         }
         return tag_dict.get(tag, wordnet.NOUN)
     
+    def __NLP(self, content):
+        content = [ self.__lemmatizer.lemmatize(token, pos=self.__getPOS(token)) for token in simple_preprocess(content, deacc=True) if token not in STOPWORDS ]
+        return ' '.join(content)
+    
     def __cleaning(self):
-        word_net = WordNetLemmatizer()
         contents = Contents()
         clean_contents = Stream(self.__tempFile, overwrite=True)
         for content in contents:
-            # Remove HTML tags
-            soup = BeautifulSoup(content, 'lxml')
-            for tag in soup.find_all('code'):
-                tag.decompose()
-            content = soup.get_text()
-            # Tokenize, remove stopwords and lemmatize
-            content = [ word_net.lemmatize(token, pos=self.__getPOS(token)) for token in simple_preprocess(content, deacc=True) if token not in STOPWORDS ]
-            content = ' '.join(content)
+            content = self.__clearHTML(content)
+            content = self.__URLRegex.sub(' ', content)
+            content = self.__WordRegex.sub(' ', content)
+            content = self.__NLP(content)
             clean_contents.append(content)
 
     def __enrichment(self):
