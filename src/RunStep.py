@@ -8,7 +8,7 @@ steps = [Extraction(), PreProcessing(), TopicModeling(), PostProcessing()]
 while True:
     print('\n')
     for i in range(len(steps)):
-        print(i+1, '-', steps[i].stepName)
+        print(i+1, '-', steps[i].getName())
     print('0 - Exit\n')
 
     step = input('Choose a step to run: ')
