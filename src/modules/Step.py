@@ -1,18 +1,25 @@
 from time import time
 
 class Step(object):
-    stepName = 'Unamed step'
-    executionTime = None
 
-    def __init__(self, stepName=None):
-        if type(stepName) == str:
-            self.stepName = stepName
+    def __init__(self, name=None):
+        self.__name = 'Unamed step'
+        if type(name) == str:
+            self.__name = name
+        
+        self.__executionTime = None
+    
+    def getName(self):
+        return self.__name
+    
+    def setExcecutionTime(self, execution_time):
+        self.__executionTime = execution_time
     
     def _process(self): 
         pass
 
     def execute(self):
-        print('\n' + self.stepName + ' started')
+        print('\n' + self.__name + ' started')
         startTime = time()
         self._process()
         endTime = time()
