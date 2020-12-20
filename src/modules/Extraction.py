@@ -47,6 +47,7 @@ class Extraction(Step):
                 if type(tags) == str:
                     content += ' ' + tags
             content = content.replace('\n', ' ').replace('\r', '')
+            content = content.encode("ascii", errors="ignore").decode()
             contents.append(content)
             # Clear memory
             element.clear()
