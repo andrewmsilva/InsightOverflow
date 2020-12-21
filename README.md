@@ -10,7 +10,7 @@ Extraction started
   Extracted: 49598818
   Ignored: 739023
   Total: 50337841
-Execution time: 05:39:07.74
+Execution time: 04:46:22.44
 ```
 
 ## Pre-processing
