@@ -49,15 +49,15 @@ class TopicModeling(Step):
         print('  Experiment done: {}, {}, {}, {}, {} | {}, {:.4f}'.format(model_name, num_topics, chunksize, passes, iterations, execution_time, coherence))
     
     def __runExperiments(self):
-        chunksize_list = [5000, 50000, 500000]
         passes_list = [10, 100]
         iterations_list = [100, 200]
+        chunksize_list = [5000, 50000, 500000]
         num_topics_list = [20, 40, 60, 80]
         model_name_list = ['lda', 'nmf']
         # Starting experiments
-        for chunksize in chunksize_list:
-            for passes in passes_list:
-                for iterations in iterations_list:
+        for passes in passes_list:
+            for iterations in iterations_list:
+                for chunksize in chunksize_list:
                     for num_topics in num_topics_list:
                         for model_name in model_name_list:
                             start_time = time()
