@@ -19,36 +19,44 @@ class TopicModel(object):
     def getCoherence(self):
         return self.__coherenceModel.get_coherence()
     
-    def getDocumentTopics(self, document):
-        return self.__model.get_document_topics(document, 0.1)
+    def getDocumentTopics(self, document, threshold=None):
+        return self.__model.get_document_topics(document, threshold)
     
-    def build(self, model_name, num_topics, corpus=None):
+    def build(self, model_name, num_topics, chunksize, passes, iterations, corpus=None):
         self.__modelName = model_name
         # Update corpus if necessary
         if corpus:
             self.__corpus = corpus
         # Build topic model
         if model_name == 'lda':
-            self.__buildLDA(num_topics)
+            self.__buildLDA(num_topics, chunksize, passes, iterations)
         elif model_name == 'nmf':
-            self.__buildNMF(num_topics)
+            self.__buildNMF(num_topics, chunksize, passes, iterations)
         # Build coherence model
         self.__buildCoherenceModel()
     
-    def __buildLDA(self, num_topics):
+    def __buildLDA(self, num_topics, chunksize, passes, iterations):                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
         self.__model = LdaMulticore(
             self.__corpus,
             id2word=self.__corpus.getDictionary(),
             num_topics=num_topics,
-            workers=6,
+            chunksize=chunksize,
+            passes=passes,
+            iterations=iterations,
+            eval_every=None,
+            workers=7,
             random_state=10
         )
     
-    def __buildNMF(self, num_topics):
+    def __buildNMF(self, num_topics, chunksize, passes, iterations):
         self.__model = Nmf(
             self.__corpus,
             id2word=self.__corpus.getDictionary(),
             num_topics=num_topics,
+            chunksize=chunksize,
+            passes=passes,
+            iterations=iterations,
+            eval_every=None,
             random_state=10
         )
 
@@ -57,7 +65,7 @@ class TopicModel(object):
             model=self.__model,
             texts=self.__corpus.getContents(),
             coherence='c_v',
-            processes=6
+            processes=7
         )
     
     def __printTopics(self):
