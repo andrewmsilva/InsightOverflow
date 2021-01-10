@@ -4,6 +4,7 @@ from modules.Corpus import Corpus
 from modules.TopicModel import TopicModel
 
 import pandas as pd
+import json
 
 class PostProcessing(Step):
     
@@ -22,30 +23,53 @@ class PostProcessing(Step):
         self.__model.load(self.__experiment.model_name)
         self.__model.setCorpus(self.__corpus)
 
-        self.__generalAbsolutePopularity = None
-        self.__generalRelativePopularity = None
+        self.__generalPopularityFile = 'results/general-popularity.json'
+        self.__generalPopularity = {
+            'absolute': None,
+            'relative': None,
+        }
 
-        self.__generalSemmianualAbsolutePopularity = None
-        self.__generalSemmianualRelativePopularity = None
+        self.__generalSemmianualPopularityFile = 'results/general-semmianual-popularity.json'
+        self.__generalSemmianualPopularity = {
+            'absolute': None,
+            'relative': None,
+        }
 
-        self.__userAbsolutePopularity = None
-        self.__userRelativePopularity = None
+        self.__userPopularityFile = 'results/user-popularity.json'
+        self.__userPopularity = {
+            'absolute': None,
+            'relative': None,
+        }
 
-        self.__userSemmianualAbsolutePopularity = None
-        self.__userSemmianualRelativePopularity = None
-    
-    def _process(self):
+        self.__userSemmianualPopularityFile = 'results/user-semmianual-popularity.json'
+        self.__userSemmianualPopularity = {
+            'absolute': None,
+            'relative': None,
+        }
+
+    def __computeMetrics(self):
         # Initialize results
-        self.__generalAbsolutePopularity = [0]*self.__experiment.num_topics
-        self.__generalRelativePopularity = [0]*self.__experiment.num_topics
+        self.__generalPopularity['absolute'] = [0]*self.__experiment.num_topics
+        self.__generalPopularity['relative'] = [0]*self.__experiment.num_topics
         # Compute measures
         for document in self.__corpus:
             topics = self.__model.getDocumentTopics(document, 0.1)
             for topic, weight in topics:
-                self.__generalAbsolutePopularity[topic] += 1
-                self.__generalRelativePopularity[topic] += weight
+                self.__generalPopularity['absolute'][topic] += 1
+                self.__generalPopularity['relative'][topic] += weight
         for topic in range(self.__experiment.num_topics):
-            self.__generalRelativePopularity[topic] /= len(self.__corpus)
-
-        print(self.__generalAbsolutePopularity)
-        print(self.__generalRelativePopularity)
+            self.__generalPopularity['relative'][topic] /= len(self.__corpus)
+    
+    def __saveMetrics(self):
+        with open(self.__generalPopularityFile, 'w') as f:
+            f.write(json.dumps(self.__generalSemmianualPopularity))
+        with open(self.__generalSemmianualPopularityFile, 'w') as f:
+            f.write(json.dumps(self.__generalSemmianualPopularity))
+        with open(self.__userPopularityFile, 'w') as f:
+            f.write(json.dumps(self.__userPopularity))
+        with open(self.__userSemmianualPopularityFile, 'w') as f:
+            f.write(json.dumps(self.__userSemmianualPopularity))
+    
+    def _process(self):
+        self.__computeMetrics()
+        self.__saveMetrics()
