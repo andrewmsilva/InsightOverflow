@@ -61,7 +61,7 @@ class TopicModeling(Step):
     
     def __runExperiments(self):
         num_topics_list = [20, 40, 60, 80, 100]
-        iterations_list = [10, 100, 200, 500]
+        max_iterations = 500
 
         # Starting experiments
         for num_topics in num_topics_list:
@@ -69,12 +69,10 @@ class TopicModeling(Step):
             # Initialize topic model
             self.__model = tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20, seed=10)
             
-            last_iteration = 0
-            for iterations in iterations_list:
+            for iterations in range(10, max_iterations+1, 10):
 
                 # Train topic model and compute coherence
-                self.__model.train(iter=iterations-last_iteration, workers=40)
-                last_iteration = iterations
+                self.__model.train(iter=iterations, workers=40)
                 cv = tp.coherence.Coherence(self.__model, coherence='c_v')
 
                 # Save experiment to file
