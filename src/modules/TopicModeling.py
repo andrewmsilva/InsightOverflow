@@ -57,22 +57,22 @@ class TopicModeling(Step):
         self.__experiments = self.__experiments.append(row, ignore_index=True)
         self.__experiments.to_csv(self.__experimentsFile)
     
-        print('  Experiment done: k={} i={} | p={:.2f}, cv={:.2f}'.format(num_topics, iterations, perplexity, coherence))
+        print('  Experiment done: k={} i={} | p={:.2f} cv={:.2f}'.format(num_topics, iterations, perplexity, coherence))
     
     def __runExperiments(self):
-        num_topics_list = [20, 40, 60, 80, 100]
+        max_topics = 100
         max_iterations = 500
 
         # Starting experiments
-        for num_topics in num_topics_list:
+        for num_topics in range(10, max_topics+1, 10):
 
             # Initialize topic model
             self.__model = tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20, seed=10)
-            
+
             for iterations in range(10, max_iterations+1, 10):
 
                 # Train topic model and compute coherence
-                self.__model.train(iter=iterations, workers=40)
+                self.__model.train(iter=10, workers=50)
                 cv = tp.coherence.Coherence(self.__model, coherence='c_v')
 
                 # Save experiment to file
