@@ -1,18 +1,23 @@
 from modules.Step import Step, time
+from modules.Data import PreProcessedContents
 from modules.Corpus import Corpus
 from modules.TopicModel import TopicModel
 
 import pandas as pd
+import tomotopy as tp
 
 class TopicModeling(Step):
     
     def __init__(self):
         super().__init__('Topic modeling')
 
+        self.__corpusFile = 'results/corpus.bin'
         self.__corpus = None
-        self.__model = TopicModel()
 
-        self.__experiments = pd.DataFrame(columns=['model_name', 'num_topics', 'chunksize', 'passes', 'execution_time', 'coherence'])
+        self.__modelFile = 'results/model.bin'
+        self.__model = None
+
+        self.__experiments = pd.DataFrame(columns=['num_topics', 'iterations', 'perplexity', 'coherence'])
         self.__experimentsFile = 'results/experiments.csv'
 
     # Experiment methods
@@ -24,46 +29,57 @@ class TopicModeling(Step):
     
     def __buildCorpus(self):
         start_time = time()
-        self.__corpus = Corpus()
+
+        try:
+            self.__corpus = tp.utils.Corpus.load(self.__corpusFile)
+        except:
+            self.__corpus = tp.utils.Corpus()
+            for post in PreProcessedContents(splitted=True):
+                self.__corpus.add_doc(post)
+            #self.__corpus.save(self.__corpusFile)
+        
         execution_time = self.__formatExecutionTime(time()-start_time)
         print('  Corpus built: {}'.format(execution_time))
 
-    def __saveExperiment(self, model_name, num_topics, chunksize, passes, execution_time, coherence):
+    def __saveExperiment(self, num_topics, iterations, perplexity, coherence):
         # Save model with greatest coherence
         if self.__experiments.empty or self.__experiments.iloc[self.__experiments['coherence'].idxmax()]['coherence'] < coherence:
-            self.__model.save()        
+            self.__model.save(self.__modelFile)
+        
         # Save experiment to CSV
-        execution_time = self.__formatExecutionTime(execution_time)
         row = {
-            'model_name': model_name,
             'num_topics': num_topics,
-            'chunksize': chunksize,
-            'passes': passes,
-            'execution_time': execution_time,
+            'iterations': iterations,
+            'perplexity': perplexity,
             'coherence': coherence
         }
+
         self.__experiments = self.__experiments.append(row, ignore_index=True)
         self.__experiments.to_csv(self.__experimentsFile)
     
-        print('  Experiment done: {}, {}, {}, {} | {}, {:.4f}'.format(model_name, num_topics, chunksize, passes, execution_time, coherence))
+        print('  Experiment done: k={} i={} | p={:.2f}, cv={:.2f}'.format(num_topics, iterations, perplexity, coherence))
     
     def __runExperiments(self):
-        passes_list = [10, 100, 200]
-        chunksize_list = [5000, 50000, 500000]
-        num_topics_list = [20, 40, 60, 80]
-        model_name_list = ['lda', 'nmf']
-        # Starting experiments
-        for passes in passes_list:
-            for chunksize in chunksize_list:
-                for num_topics in num_topics_list:
-                    for model_name in model_name_list:
-                        start_time = time()
-                        # Build topic model and compute coherence
-                        self.__model.build(model_name, num_topics, chunksize, passes, self.__corpus)
-                        coherence = self.__model.getCoherence()
-                        # Save experiment to file
-                        self.__saveExperiment(model_name, num_topics, chunksize, passes, time()-start_time, coherence)
+        num_topics_list = [20, 40, 60, 80, 100]
+        iterations_list = [10, 100, 200, 500]
 
+        # Starting experiments
+        for num_topics in num_topics_list:
+
+            # Initialize topic model
+            self.__model = tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20, seed=10)
+            
+            last_iteration = 0
+            for iterations in iterations_list:
+
+                # Train topic model and compute coherence
+                self.__model.train(iter=iterations-last_iteration, workers=40)
+                last_iteration = iterations
+                cv = tp.coherence.Coherence(self.__model, coherence='c_v')
+
+                # Save experiment to file
+                self.__saveExperiment(num_topics, iterations, self.__model.perplexity, cv.get_score())
+        
     def _process(self):
         self.__buildCorpus()
         self.__runExperiments()
