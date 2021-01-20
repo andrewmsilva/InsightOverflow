@@ -14,21 +14,10 @@ class PostProcessing(Step):
         self.__users = Users()
         self.__dates = Dates()
 
-        self.__corpus = Corpus()
-        self.__model = TopicModel()
-
-        self.__experiments = pd.read_csv(self.__experimentsFile)
-        self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
-        
-        self.__model.load(self.__experiment.model_name)
-        self.__model.setCorpus(self.__corpus)
-
         self.__generalPopularityFile = 'results/general-popularity.json'
         self.__generalSemmianualPopularityFile = 'results/general-semmianual-popularity.json'
         self.__userPopularityFile = 'results/user-popularity.json'
         self.__userSemmianualPopularityFile = 'results/user-semmianual-popularity.json'
-
-        self.__initMetrics()
     
     @property
     def __topicMetrics(self):
@@ -88,6 +77,15 @@ class PostProcessing(Step):
         print('  Number of users: {}'.format(len(self.__userPopularity)))
     
     def _process(self):
+        self.__corpus = Corpus()
+        self.__model = TopicModel()
+
+        self.__experiments = pd.read_csv(self.__experimentsFile)
+        self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
+        
+        self.__model.load(self.__experiment.model_name)
+        self.__model.setCorpus(self.__corpus)
+        
         self.__computeMetrics()
         self.__saveMetrics()
         self.__printResults()
