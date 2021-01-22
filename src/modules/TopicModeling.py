@@ -15,7 +15,6 @@ class TopicModeling(Step):
         self.__corpus = None
 
         self.__modelFile = 'results/model.bin'
-        self.__model = None
 
         self.__experiments = pd.DataFrame(columns=['num_topics', 'iterations', 'perplexity', 'coherence'])
         self.__experimentsFile = 'results/experiments.csv'
@@ -41,10 +40,10 @@ class TopicModeling(Step):
         execution_time = self.__formatExecutionTime(time()-start_time)
         print('  Corpus built: {}'.format(execution_time))
 
-    def __saveExperiment(self, num_topics, iterations, perplexity, coherence):
+    def __saveExperiment(self, model, num_topics, iterations, perplexity, coherence):
         # Save model with greatest coherence
         if self.__experiments.empty or self.__experiments.iloc[self.__experiments['coherence'].idxmax()]['coherence'] < coherence:
-            self.__model.save(self.__modelFile)
+            model.save(self.__modelFile)
         
         # Save experiment to CSV
         row = {
@@ -63,20 +62,19 @@ class TopicModeling(Step):
         max_topics = 100
         max_iterations = 500
 
-        # Starting experiments
-        for num_topics in range(10, max_topics+1, 10):
+        # Initializing models
+        models = [
+            tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20, seed=10)
+            for num_topics in range(10, max_topics+1, 10)
+        ]
 
-            # Initialize topic model
-            self.__model = tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20, seed=10)
-
-            for iterations in range(10, max_iterations+1, 10):
-
-                # Train topic model and compute coherence
-                self.__model.train(iter=10, workers=50)
-                cv = tp.coherence.Coherence(self.__model, coherence='c_v')
-
-                # Save experiment to file
-                self.__saveExperiment(num_topics, iterations, self.__model.perplexity, cv.get_score())
+        # Start iteration experiments
+        for iterations in range(10, max_iterations+1, 10):
+            # Train each model and save experiment
+            for model in models:
+                model.train(iter=10, workers=50)
+                cv = tp.coherence.Coherence(model, coherence='c_v')
+                self.__saveExperiment(model, model.k, model.global_step, model.perplexity, cv.get_score())
         
     def _process(self):
         self.__buildCorpus()
