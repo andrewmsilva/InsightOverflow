@@ -5,6 +5,7 @@ from modules.TopicModel import TopicModel
 
 import pandas as pd
 import tomotopy as tp
+from os import remove
 
 class TopicModeling(Step):
     
@@ -16,8 +17,8 @@ class TopicModeling(Step):
 
         self.__modelFile = 'results/model.bin'
 
-        self.__experiments = pd.DataFrame(columns=['num_topics', 'iterations', 'perplexity', 'coherence'])
         self.__experimentsFile = 'results/experiments.csv'
+        self.__experiments = None
 
     # Experiment methods
 
@@ -39,16 +40,37 @@ class TopicModeling(Step):
         
         execution_time = self.__formatExecutionTime(time()-start_time)
         print('  Corpus built: {}'.format(execution_time))
+    
+    def __trainModels(self):
+        max_topics = 100
+        max_iterations = 1000
 
-    def __saveExperiment(self, model, num_topics, iterations, perplexity, coherence):
+        # Start experiments
+        for iterations in range(10, max_iterations+1, 10):
+            for num_topics in range(10, max_topics+1, 10):
+                # Create or load model
+                model_file = 'results/model-{}.bin'.format(num_topics)
+                try:
+                    model = tp.LDAModel.load(model_file)
+                except:
+                    model = tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20)
+                # Train and load model
+                model.train(iter=10, workers=4)
+                model.save(model_file)
+                # Compute c_v coherence
+                cv = tp.coherence.Coherence(model, coherence='c_v')
+                # Save experiment
+                self.__saveExperiment(model, model.global_step, model.k, model.perplexity, cv.get_score())
+        
+    def __saveExperiment(self, model, iterations, num_topics, perplexity, coherence):
         # Save model with greatest coherence
         if self.__experiments.empty or self.__experiments.iloc[self.__experiments['coherence'].idxmax()]['coherence'] < coherence:
             model.save(self.__modelFile)
         
         # Save experiment to CSV
         row = {
-            'num_topics': num_topics,
             'iterations': iterations,
+            'num_topics': num_topics,
             'perplexity': perplexity,
             'coherence': coherence
         }
@@ -56,26 +78,9 @@ class TopicModeling(Step):
         self.__experiments = self.__experiments.append(row, ignore_index=True)
         self.__experiments.to_csv(self.__experimentsFile)
     
-        print('  Experiment done: k={} i={} | p={:.2f} cv={:.2f}'.format(num_topics, iterations, perplexity, coherence))
+        print('  Experiment done: i={} k={} | p={:.2f} cv={:.2f}'.format(iterations, num_topics, perplexity, coherence))
     
-    def __runExperiments(self):
-        max_topics = 100
-        max_iterations = 500
-
-        # Initializing models
-        models = [
-            tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20, seed=10)
-            for num_topics in range(10, max_topics+1, 10)
-        ]
-
-        # Start iteration experiments
-        for iterations in range(10, max_iterations+1, 10):
-            # Train each model and save experiment
-            for model in models:
-                model.train(iter=10, workers=50)
-                cv = tp.coherence.Coherence(model, coherence='c_v')
-                self.__saveExperiment(model, model.k, model.global_step, model.perplexity, cv.get_score())
-        
     def _process(self):
+        self.__experiments = pd.DataFrame(columns=['iterations', 'num_topics', 'perplexity', 'coherence'])
         self.__buildCorpus()
-        self.__runExperiments()
+        self.__trainModels()
