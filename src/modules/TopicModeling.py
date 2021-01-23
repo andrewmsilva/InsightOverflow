@@ -55,7 +55,7 @@ class TopicModeling(Step):
                 except:
                     model = tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20)
                 # Train and load model
-                model.train(iter=10, workers=4)
+                model.train(iter=10, workers=50)
                 model.save(model_file)
                 # Compute c_v coherence
                 cv = tp.coherence.Coherence(model, coherence='c_v')
