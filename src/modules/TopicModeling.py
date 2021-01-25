@@ -29,15 +29,13 @@ class TopicModeling(Step):
     
     def __buildCorpus(self):
         start_time = time()
-
         try:
             self.__corpus = tp.utils.Corpus.load(self.__corpusFile)
         except:
             self.__corpus = tp.utils.Corpus()
             for post in PreProcessedContents(splitted=True):
                 self.__corpus.add_doc(post)
-            #self.__corpus.save(self.__corpusFile)
-        
+            self.__corpus.save(self.__corpusFile)
         execution_time = self.__formatExecutionTime(time()-start_time)
         print('  Corpus built: {}'.format(execution_time))
     
@@ -48,15 +46,9 @@ class TopicModeling(Step):
         # Start experiments
         for iterations in range(10, max_iterations+1, 10):
             for num_topics in range(10, max_topics+1, 10):
-                # Create or load model
-                model_file = 'results/model-{}.bin'.format(num_topics)
-                try:
-                    model = tp.LDAModel.load(model_file)
-                except:
-                    model = tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20)
                 # Train and load model
-                model.train(iter=10, workers=50)
-                model.save(model_file)
+                model = tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20, seed=10)
+                model.train(iter=iterations, workers=50)
                 # Compute c_v coherence
                 cv = tp.coherence.Coherence(model, coherence='c_v')
                 # Save experiment
@@ -65,7 +57,7 @@ class TopicModeling(Step):
     def __saveExperiment(self, model, iterations, num_topics, perplexity, coherence):
         # Save model with greatest coherence
         if self.__experiments.empty or self.__experiments.iloc[self.__experiments['coherence'].idxmax()]['coherence'] < coherence:
-            model.save(self.__modelFile)
+            model.save(self.__modelFile, full=False)
         
         # Save experiment to CSV
         row = {
