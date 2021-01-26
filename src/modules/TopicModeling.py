@@ -66,7 +66,7 @@ class TopicModeling(Step):
         self.__experiments = self.__experiments.append(row, ignore_index=True)
         self.__experiments.to_csv(self.__experimentsFile)
     
-        print('  Experiment done: i={} k={} | p={:.2f} cv={:.2f}'.format(iterations, num_topics, perplexity, coherence))
+        print('  Experiment done: i={} k={} | p={:.2f} cv={:.2f}'.format(row['iterations'], row['num_topics'], row['perplexity'], row['coherence']))
     
     def _process(self):
         self.__experiments = pd.DataFrame(columns=['iterations', 'num_topics', 'perplexity', 'coherence'])
