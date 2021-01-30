@@ -13,9 +13,7 @@ class TopicModeling(Step):
         super().__init__('Topic modeling')
 
         self.__corpus = None
-
         self.__modelFile = 'results/model.bin'
-        self.__model = None
 
         self.__experimentsFile = 'results/experiments.csv'
         self.__experiments = None
@@ -43,23 +41,23 @@ class TopicModeling(Step):
         for iterations in range(10, max_iterations+1, 10):
             for num_topics in range(10, max_topics+1, 10):
                 # Train and load model
-                self.__model = tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20, seed=10)
-                self.__model.train(iter=iterations, workers=50)
+                model = tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20, seed=10)
+                model.train(iter=iterations, workers=50)
                 # Compute c_v coherence
-                cv = tp.coherence.Coherence(self.__model, coherence='c_v')
+                cv = tp.coherence.Coherence(model, coherence='c_v')
                 # Save experiment
-                self.__saveExperiment(cv.get_score())
+                self.__saveExperiment(model, cv.get_score())
         
-    def __saveExperiment(self, coherence):
+    def __saveExperiment(self, model, coherence):
         # Save model with greatest coherence
         if self.__experiments.empty or self.__experiments.iloc[self.__experiments['coherence'].idxmax()]['coherence'] < coherence:
-            self.__model.save(self.__modelFile, full=False)
+            model.save(self.__modelFile, full=False)
         
         # Save experiment to CSV
         row = {
-            'iterations': self.__model.global_step,
-            'num_topics': self.__model.k,
-            'perplexity': self.__model.perplexity,
+            'iterations': model.global_step,
+            'num_topics': model.k,
+            'perplexity': model.perplexity,
             'coherence': coherence
         }
 
