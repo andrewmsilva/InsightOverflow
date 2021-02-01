@@ -12,9 +12,7 @@ class TopicModeling(Step):
     def __init__(self):
         super().__init__('Topic modeling')
 
-        self.__corpus = None
         self.__modelFile = 'results/model.bin'
-
         self.__experimentsFile = 'results/experiments.csv'
         self.__experiments = None
 
@@ -25,13 +23,10 @@ class TopicModeling(Step):
         step.setExcecutionTime(execution_time)
         return step.getFormatedExecutionTime()
     
-    def __buildCorpus(self):
-        start_time = time()
-        self.__corpus = tp.utils.Corpus()
+    def __addCorpus(self, model):
         for post in PreProcessedContents(splitted=True):
-            self.__corpus.add_doc(post)
-        execution_time = self.__formatExecutionTime(time()-start_time)
-        print('  Corpus built: {}'.format(execution_time))
+            if len(post) > 0:
+                model.add_doc(post)
     
     def __trainModels(self):
         max_topics = 100
@@ -40,9 +35,11 @@ class TopicModeling(Step):
         # Start experiments
         for iterations in range(10, max_iterations+1, 10):
             for num_topics in range(10, max_topics+1, 10):
-                # Train and load model
-                model = tp.LDAModel(corpus=self.__corpus, k=num_topics, min_df=200, rm_top=20, seed=10)
-                model.train(iter=iterations, workers=50)
+                # Create model and add corpus
+                model = tp.LDAModel(k=num_topics, min_df=200, rm_top=20, seed=10)
+                self.__addCorpus(model)
+                # Train model
+                model.train(iter=iterations, workers=40)
                 # Compute c_v coherence
                 cv = tp.coherence.Coherence(model, coherence='c_v')
                 # Save experiment
@@ -68,5 +65,4 @@ class TopicModeling(Step):
     
     def _process(self):
         self.__experiments = pd.DataFrame(columns=['iterations', 'num_topics', 'perplexity', 'coherence'])
-        self.__buildCorpus()
         self.__trainModels()
