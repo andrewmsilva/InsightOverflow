@@ -35,6 +35,7 @@ class TopicModeling(Step):
         # Start experiments
         for iterations in range(10, max_iterations+1, 10):
             for num_topics in range(10, max_topics+1, 10):
+                start_time = time()
                 # Create model and add corpus
                 model = tp.LDAModel(k=num_topics, min_df=200, rm_top=20, seed=10)
                 self.__addCorpus(model)
@@ -43,17 +44,19 @@ class TopicModeling(Step):
                 # Compute c_v coherence
                 cv = tp.coherence.Coherence(model, coherence='c_v')
                 # Save experiment
-                self.__saveExperiment(model, cv.get_score())
+                self.__saveExperiment(model, cv.get_score(), start_time)
         
-    def __saveExperiment(self, model, coherence):
+    def __saveExperiment(self, model, coherence, start_time):
         # Save model with greatest coherence
         if self.__experiments.empty or self.__experiments.iloc[self.__experiments['coherence'].idxmax()]['coherence'] < coherence:
             model.save(self.__modelFile, full=False)
         
         # Save experiment to CSV
+        execution_time = self.__formatExecutionTime(time()-start_time)
         row = {
             'iterations': model.global_step,
             'num_topics': model.k,
+            'execution_time': execution_time,
             'perplexity': model.perplexity,
             'coherence': coherence
         }
@@ -61,8 +64,8 @@ class TopicModeling(Step):
         self.__experiments = self.__experiments.append(row, ignore_index=True)
         self.__experiments.to_csv(self.__experimentsFile)
     
-        print('  Experiment done: i={} k={} | p={:.2f} cv={:.2f}'.format(row['iterations'], row['num_topics'], row['perplexity'], row['coherence']))
+        print('  Experiment done: i={} k={} t={} p={:.2f} cv={:.2f}'.format(row['iterations'], row['num_topics'],row['execution_time'], row['perplexity'], row['coherence']))
     
     def _process(self):
-        self.__experiments = pd.DataFrame(columns=['iterations', 'num_topics', 'perplexity', 'coherence'])
+        self.__experiments = pd.DataFrame(columns=['iterations', 'num_topics', 'execution_time', 'perplexity', 'coherence'])
         self.__trainModels()
