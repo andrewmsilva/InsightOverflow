@@ -1,4 +1,5 @@
 from time import time
+import os, psutil
 
 class Step(object):
 
@@ -8,6 +9,7 @@ class Step(object):
             self.__name = name
         
         self.__executionTime = None
+        self.__process = psutil.Process(os.getpid())
     
     def getName(self):
         return self.__name
@@ -33,3 +35,6 @@ class Step(object):
             return '{:0>2}:{:0>2}:{:05.2f}'.format(int(hours), int(minutes), seconds)
         else:
             return 'unexecuted'
+    
+    def _getMemoryUsage(self):
+        return self.__process.memory_info().rss
