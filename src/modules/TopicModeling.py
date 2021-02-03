@@ -6,6 +6,7 @@ from modules.TopicModel import TopicModel
 import pandas as pd
 import tomotopy as tp
 from os import remove
+import gc
 
 class TopicModeling(Step):
     
@@ -22,7 +23,7 @@ class TopicModeling(Step):
         step = Step()
         step.setExcecutionTime(execution_time)
         return step.getFormatedExecutionTime()
-    
+
     def __addCorpus(self, model):
         for post in PreProcessedContents(splitted=True):
             if len(post) > 0:
@@ -45,6 +46,9 @@ class TopicModeling(Step):
                 cv = tp.coherence.Coherence(model, coherence='c_v')
                 # Save experiment
                 self.__saveExperiment(model, cv.get_score(), start_time)
+                # Clear memory
+                del model, cv
+                gc.collect()
         
     def __saveExperiment(self, model, coherence, start_time):
         # Save model with greatest coherence
@@ -64,7 +68,7 @@ class TopicModeling(Step):
         self.__experiments = self.__experiments.append(row, ignore_index=True)
         self.__experiments.to_csv(self.__experimentsFile)
     
-        print('  Experiment done: i={} k={} t={} p={:.2f} cv={:.2f}'.format(row['iterations'], row['num_topics'],row['execution_time'], row['perplexity'], row['coherence']))
+        print('  Experiment done ({:0.2f} GB): i={} k={} t={} p={:.2f} cv={:.2f}'.format(self._getMemoryUsage()/1024**3, row['iterations'], row['num_topics'],row['execution_time'], row['perplexity'], row['coherence']))
     
     def _process(self):
         self.__experiments = pd.DataFrame(columns=['iterations', 'num_topics', 'execution_time', 'perplexity', 'coherence'])
