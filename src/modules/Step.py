@@ -21,7 +21,7 @@ class Step(object):
         pass
 
     def execute(self):
-        print('\n' + self.__name + ' started')
+        print(self.__name, 'started')
         startTime = time()
         self._process()
         endTime = time()
