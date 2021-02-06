@@ -3,21 +3,22 @@ from modules.PreProcessing import PreProcessing
 from modules.TopicModeling import TopicModeling
 from modules.PostProcessing import PostProcessing
 
-steps = [Extraction(), PreProcessing(), TopicModeling(), PostProcessing()]
+import argparse
 
-while True:
-    print('\n')
-    for i in range(len(steps)):
-        print(i+1, '-', steps[i].getName())
-    print('0 - Exit\n')
+parser = argparse.ArgumentParser()
+parser.add_argument('step', help='String containing the step name (Extraction, PreProcessing, TopicModeling or PostProcessing)', type=str)
+args = parser.parse_args()
 
-    step = input('Choose a step to run: ')
+step = None
+if args.step == 'Extraction':
+    step = Extraction()
+elif args.step == 'PreProcessing':
+    step = PreProcessing()
+elif args.step == 'TopicModeling':
+    step = TopicModeling()
+elif args.step == 'PostProcessing':
+    step = PostProcessing()
+else:
+    raise parser.ArgumentTypeError('Step name must be Extraction, PreProcessing, TopicModeling or PostProcessing')
 
-    if step == '0':
-        break
-    elif step != '':
-        step = int(step) - 1
-        if step in range(len(steps)):
-            steps[step].execute()
-        else:
-            print('\nStep not found')
+step.execute()
