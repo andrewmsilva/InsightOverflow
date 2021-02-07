@@ -47,7 +47,7 @@ class TopicModeling(Step):
 
         # Save model with greatest coherence
         if experiments.empty or experiments.iloc[experiments['coherence'].idxmax()]['coherence'] < coherence:
-            model.save(self.__modelFile, full=False)
+            model.save(self.__modelFile)
         
         # Save experiments
         experiments = experiments.append(dict(zip(experiments.columns, row)), ignore_index=True)
