@@ -1,7 +1,5 @@
 from modules.Step import Step, time
 from modules.Data import PreProcessedContents
-from modules.Corpus import Corpus
-from modules.TopicModel import TopicModel
 
 import pandas as pd
 import tomotopy as tp
