@@ -41,13 +41,13 @@ class TopicModeling(Step):
     def __saveExperiment(self, model, coherence, start_time):
         experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
 
-        # Initialize data
-        execution_time = self.__formatExecutionTime(time()-start_time)
-        row = [model.global_step, model.k, execution_time, model.perplexity, coherence]
-
         # Save model with greatest coherence
         if experiments.empty or experiments.iloc[experiments['coherence'].idxmax()]['coherence'] < coherence:
             model.save(self.__modelFile)
+
+        # Initialize data
+        execution_time = self.__formatExecutionTime(time()-start_time)
+        row = [model.global_step, model.k, execution_time, model.perplexity, coherence]
         
         # Save experiments
         experiments = experiments.append(dict(zip(experiments.columns, row)), ignore_index=True)
