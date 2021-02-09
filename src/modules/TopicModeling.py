@@ -53,7 +53,7 @@ class TopicModeling(Step):
         experiments = experiments.append(dict(zip(experiments.columns, row)), ignore_index=True)
         experiments.to_csv(self.__experimentsFile)
     
-        print('  Experiment done ({:0.2f} GB): i={} k={} t={} p={:.2f} cv={:.2f}'.format(self._getMemoryUsage()/1024**3, row[0], row[1],row[2], row[3], row[4]))      
+        print('  Experiment done: i={} k={} t={} p={:.2f} cv={:.2f}'.format(row[0], row[1],row[2], row[3], row[4]))      
 
     def _process(self):
         experiments = pd.DataFrame(columns=['iterations', 'num_topics', 'execution_time', 'perplexity', 'coherence'])
