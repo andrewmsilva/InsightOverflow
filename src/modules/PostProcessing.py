@@ -42,6 +42,19 @@ class PostProcessing(Step):
         self.__generalSemmianualPopularity = []
         self.__userPopularity = []
         self.__userSemmianualPopularity = []
+    
+    def __getTopics(self, topic_distribution, threshold=0.1):
+        topics = zip(range(len(topic_distribution)), topic_distribution)
+        result = []
+        summation = 0
+        for topic, weight in topics:
+            if weight >= threshold:
+                summation += weight
+                result.append((topic, weight))
+        
+        normalizer = 1 / float( sum([ weight for _, weight in result ]) )
+        
+        return [ (topic, round(weight*normalizer, 4)) for topic, weight in result ]
 
     def __computeMetrics(self):
         self.__initMetrics()
@@ -50,7 +63,7 @@ class PostProcessing(Step):
             if len(post) > 0:
                 # Counting posts for general popularity
                 self.__generalPopularity['count'] += 1
-                #print('  Posts covered:', self.__generalPopularity['count'], end='\r')
+                print('  Posts covered:', self.__generalPopularity['count'], end='\r')
                 # Counting posts for user popularity
                 users = [ user_['user'] for user_ in self.__userPopularity ]
                 user_i = users.index(user) if user in users else None
@@ -61,8 +74,7 @@ class PostProcessing(Step):
                 self.__userPopularity[user_i]['count'] += 1
                 # Getting post topics
                 post = self.__model.docs[self.__generalPopularity['count']-1]
-                print(post.get_topic_dist())
-                break
+                topics = self__getTopic(post.get_topic_dist())
                 for topic, weight in topics:
                     # Computing values for general popularity
                     self.__generalPopularity['absolute'][topic] += 1
