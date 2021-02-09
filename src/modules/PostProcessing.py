@@ -47,29 +47,30 @@ class PostProcessing(Step):
         self.__initMetrics()
         # Compute measures
         for (post, user) in zip(self.__posts, self.__users):
-            # Counting posts for general popularity
-            self.__generalPopularity['count'] += 1
-            #print('  Posts covered:', self.__generalPopularity['count'], end='\r')
-            # Counting posts for user popularity
-            users = [ user_['user'] for user_ in self.__userPopularity ]
-            user_i = users.index(user) if user in users else None
-            if not user_i:
-                user_i = len(self.__userPopularity)
-                self.__userPopularity.append(self.__topicMetrics)
-                self.__userPopularity[user_i]['user'] = user
-            self.__userPopularity[user_i]['count'] += 1
-            # Getting post topics
-            post = self.__model.make_doc(post)
-            print(self.__model.docs[0].get_topic_dist())
-            topics, ll = self.__model.infer([post], workers=4)
-            break
-            for topic, weight in topics:
-                # Computing values for general popularity
-                self.__generalPopularity['absolute'][topic] += 1
-                self.__generalPopularity['relative'][topic] += weight
-                # Computing values for user popularity
-                self.__userPopularity[user_i]['absolute'][topic] += 1
-                self.__userPopularity[user_i]['relative'][topic] += weight
+            if len(post) > 0:
+                # Counting posts for general popularity
+                self.__generalPopularity['count'] += 1
+                #print('  Posts covered:', self.__generalPopularity['count'], end='\r')
+                # Counting posts for user popularity
+                users = [ user_['user'] for user_ in self.__userPopularity ]
+                user_i = users.index(user) if user in users else None
+                if not user_i:
+                    user_i = len(self.__userPopularity)
+                    self.__userPopularity.append(self.__topicMetrics)
+                    self.__userPopularity[user_i]['user'] = user
+                self.__userPopularity[user_i]['count'] += 1
+                # Getting post topics
+                post = self.__model.docs[self.__generalPopularity['count']-1]
+                print(post.get_topic_dist())
+                break
+                for topic, weight in topics:
+                    # Computing values for general popularity
+                    self.__generalPopularity['absolute'][topic] += 1
+                    self.__generalPopularity['relative'][topic] += weight
+                    # Computing values for user popularity
+                    self.__userPopularity[user_i]['absolute'][topic] += 1
+                    self.__userPopularity[user_i]['relative'][topic] += weight
+
         # Finishing relative popularity calculation
         for topic in range(self.__experiment.num_topics):
             self.__generalPopularity['relative'][topic] /= self.__generalPopularity['count']
