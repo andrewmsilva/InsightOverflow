@@ -44,23 +44,27 @@ class PostProcessing(Step):
         self.__userSemmianualPopularity = []
     
     def __getTopics(self, topic_distribution, threshold=0.1):
-        topics = zip(range(len(topic_distribution)), topic_distribution)
-        result = []
-        summation = 0
-        for topic, weight in topics:
-            if weight >= threshold:
-                summation += weight
-                result.append((topic, weight))
+        topics = list(zip(range(len(topic_distribution)), topic_distribution))
+        topics.sort(key=lambda value: value[1])
+
+        for i in range(len(topics)-1, -1, -1):
+            topic, weight = topics[i]
+            if weight < threshold:
+                del topics[i]
+            normalizer = 1 / float( sum([ weight for _, weight in topics ]) )
+            topics = [ (topic, weight*normalizer) for topic, weight in topics ]
         
-        normalizer = 1 / float( sum([ weight for _, weight in result ]) )
-        
-        return [ (topic, round(weight*normalizer, 4)) for topic, weight in result ]
+        return topics
 
     def __computeMetrics(self):
         self.__initMetrics()
         # Compute measures
-        for (post, user) in zip(self.__posts, self.__users):
-            if len(post) > 0:
+        num_posts = len(self.__model.docs)
+        data = zip(self.__posts, self.__users)
+        for (post, user) in data:
+            if self.__generalPopularity['count'] == num_posts:
+                break
+            elif len(post) > 0:
                 # Counting posts for general popularity
                 self.__generalPopularity['count'] += 1
                 print('  Posts covered:', self.__generalPopularity['count'], end='\r')
@@ -74,7 +78,7 @@ class PostProcessing(Step):
                 self.__userPopularity[user_i]['count'] += 1
                 # Getting post topics
                 post = self.__model.docs[self.__generalPopularity['count']-1]
-                topics = self__getTopic(post.get_topic_dist())
+                topics = self.__getTopics(post.get_topic_dist())
                 for topic, weight in topics:
                     # Computing values for general popularity
                     self.__generalPopularity['absolute'][topic] += 1
