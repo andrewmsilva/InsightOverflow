@@ -72,7 +72,7 @@ class TopicModeling(Step):
                 p.join()
                 p.terminate()
                 # Clear memory
-                def p
+                del p
                 gc.collect()
         # Print best experiment
         experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
