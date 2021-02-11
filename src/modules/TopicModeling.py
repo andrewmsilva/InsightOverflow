@@ -4,6 +4,7 @@ from modules.Data import PreProcessedContents
 import pandas as pd
 import tomotopy as tp
 from multiprocessing import Process
+import gc
 
 class TopicModeling(Step):
     
@@ -48,7 +49,10 @@ class TopicModeling(Step):
             experiments = experiments.append(dict(zip(experiments.columns, row)), ignore_index=True)
             experiments.to_csv(self.__experimentsFile)
             # Print result
-            print('  Experiment done: i={} k={} t={} p={:.2f} cv={:.2f}'.format(row[0], row[1],row[2], row[3], row[4]))    
+            print('  Experiment done: i={} k={} t={} p={:.2f} cv={:.2f}'.format(row[0], row[1],row[2], row[3], row[4]))  
+            # Clear memory
+            del model, cv, experiments
+            gc.collect()
         return 0  
 
     def _process(self):
@@ -67,6 +71,9 @@ class TopicModeling(Step):
                 p.start()
                 p.join()
                 p.terminate()
+                # Clear memory
+                def p
+                gc.collect()
         # Print best experiment
         experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
         best = experiments.iloc[experiments['coherence'].idxmax()]
