@@ -48,7 +48,8 @@ class TopicModeling(Step):
             experiments = experiments.append(dict(zip(experiments.columns, row)), ignore_index=True)
             experiments.to_csv(self.__experimentsFile)
             # Print result
-            print('  Experiment done: i={} k={} t={} p={:.2f} cv={:.2f}'.format(row[0], row[1],row[2], row[3], row[4]))      
+            print('  Experiment done: i={} k={} t={} p={:.2f} cv={:.2f}'.format(row[0], row[1],row[2], row[3], row[4]))    
+        return 0  
 
     def _process(self):
         # Create experiments csv
@@ -58,13 +59,14 @@ class TopicModeling(Step):
             experiments = pd.DataFrame(columns=['iterations', 'num_topics', 'execution_time', 'perplexity', 'coherence'])
             experiments.to_csv(self.__experimentsFile)
         # Run experiments
-        max_iterations = 100
+        max_iterations = 1000
         max_topics = 100
         for iterations in range(10, max_iterations+1, 10):
             for num_topics in range(10, max_topics+1, 10):
                 p = Process(target=self.__trainModel, args=(iterations, num_topics))
                 p.start()
                 p.join()
+                p.terminate()
         # Print best experiment
         experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
         best = experiments.iloc[experiments['coherence'].idxmax()]
