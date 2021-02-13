@@ -5,6 +5,14 @@ import tomotopy as tp
 import pandas as pd
 import json
 
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
+
+import warnings
+warnings.filterwarnings("ignore")
+
 class PostProcessing(Step):
     
     def __init__(self):
@@ -24,6 +32,62 @@ class PostProcessing(Step):
         self.__generalSemmianualPopularityFile = 'results/general-semmianual-popularity.json'
         self.__userPopularityFile = 'results/user-popularity.json'
         self.__userSemmianualPopularityFile = 'results/user-semmianual-popularity.json'
+    
+    def __coherenceChart(self):
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+
+        X = self.__experiments['num_topics'].tolist()
+        Y = self.__experiments['iterations'].tolist()
+        Z = self.__experiments['coherence'].tolist()
+
+        Z_max = max(Z)
+        index = Z.index(Z_max)
+        X_max = X[index]
+        Y_max = Y[index]
+
+        surface = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0)
+
+        ax.text(X_max, Y_max, Z_max, 'V', fontsize=12)
+        ax.zaxis.set_major_locator(LinearLocator(10))
+        ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+
+        ax.set_title('Best experiment: iterations={} topics={} coherence={:.4f}'.format(Y_max, X_max, Z_max), pad=20)
+        ax.set_xlabel('Topics')
+        ax.set_ylabel('Iterations')
+        ax.set_zlabel('Coherence')
+
+        fig.colorbar(surface, shrink=0.5, aspect=5)
+        plt.savefig('results/Coherence-Chart.png')
+        plt.clf()
+    
+    def __perplexityChart(self):
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+
+        X = self.__experiments['iterations'].tolist()
+        Y = self.__experiments['num_topics'].tolist()
+        Z = self.__experiments['perplexity'].tolist()
+
+        Z_max = min(Z)
+        index = Z.index(Z_max)
+        X_max = X[index]
+        Y_max = Y[index]
+
+        surface = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0)
+
+        ax.text(X_max, Y_max, Z_max, 'V', fontsize=12)
+        ax.zaxis.set_major_locator(LinearLocator(10))
+        ax.zaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+        fig.colorbar(surface, shrink=0.5, aspect=5)
+
+        ax.set_title('Best experiment: iterations={} topics={} perplexity={:.0f}'.format(X_max, Y_max, Z_max), pad=20)
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Topics')
+        ax.set_zlabel('Coherence')
+
+        plt.savefig('results/Perplexity-Chart.png')
+        plt.clf()
 
     def __printTopics(self):
         for topic in range(self.__model.k):
@@ -108,11 +172,14 @@ class PostProcessing(Step):
         print('  Number of users: {}'.format(len(self.__userPopularity)))
     
     def _process(self):
-        self.__experiments = pd.read_csv(self.__experimentsFile)
+        self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         
         self.__model = tp.LDAModel.load(self.__modelFile)
         self.__printTopics()
+
+        self.__coherenceChart()
+        self.__perplexityChart()
         
         self.__computeMetrics()
         self.__saveMetrics()
