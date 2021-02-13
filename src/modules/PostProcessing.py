@@ -84,7 +84,7 @@ class PostProcessing(Step):
         ax.set_title('Best experiment: iterations={} topics={} perplexity={:.0f}'.format(X_max, Y_max, Z_max), pad=20)
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Topics')
-        ax.set_zlabel('Coherence')
+        ax.set_zlabel('Perplexity')
 
         plt.savefig('results/Perplexity-Chart.png')
         plt.clf()
