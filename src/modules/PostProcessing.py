@@ -97,8 +97,8 @@ class PostProcessing(Step):
     def __topicMetrics(self):
         return {
             'count': 0,
-            'absolute': [0]*self.__experiment.num_topics,
-            'relative': [0]*self.__experiment.num_topics
+            'absolute': [0]*int(self.__experiment.num_topics),
+            'relative': [0]*int(self.__experiment.num_topics)
         }
     
     def __initMetrics(self):
