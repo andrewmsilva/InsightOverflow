@@ -65,7 +65,7 @@ class TopicModeling(Step):
         # Run experiments
         max_topics = 100
         for num_topics in range(10, max_topics+1, 10):
-            p = Process(target=self.__trainModel, args=(num_topics))
+            p = Process(target=self.__trainModel, args=[num_topics])
             p.start()
             p.join()
             p.terminate()
