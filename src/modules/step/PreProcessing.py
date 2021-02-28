@@ -1,10 +1,9 @@
-from modules.Step import Step
-from modules.Data import Stream, Contents, PreProcessedContents
+from .BaseStep import BaseStep
+from ..data.Posts import Posts
 
 from bs4 import BeautifulSoup
 from gensim.utils import simple_preprocess
 from gensim.parsing.preprocessing import STOPWORDS
-import re
 
 # from nltk import download
 # download('wordnet')
@@ -17,12 +16,13 @@ from gensim.models import Phrases
 from gensim.models.phrases import Phraser
 from os import remove
 
-class PreProcessing(Step):
+class PreProcessing(BaseStep):
 
     def __init__(self):
         super().__init__('Pre-processing')
-        self.__tempFile = 'data/clean-contents.txt'
         self.__wordNet = WordNetLemmatizer()
+        self.__posts = Posts()
+        self.__pPosts = Posts(preProcessed=True)
     
     def __clearHTML(self, content):
         soup = BeautifulSoup(content, 'lxml')
@@ -32,13 +32,13 @@ class PreProcessing(Step):
     
     def __getPOS(self, token):
         tag = pos_tag([token])[0][1][0].upper()
-        tag_dict = {
+        tagDict = {
             "J": wordnet.ADJ,
             "N": wordnet.NOUN,
             "V": wordnet.VERB,
             "R": wordnet.ADV
         }
-        return tag_dict.get(tag, wordnet.NOUN)
+        return tagDict.get(tag, wordnet.NOUN)
     
     def __applyNLP(self, content):
         doc = []
@@ -49,23 +49,21 @@ class PreProcessing(Step):
         return doc
     
     def __cleaning(self):
-        contents = Contents()
-        clean_contents = Stream(self.__tempFile, overwrite=True)
-        for content in contents:
+        cleanContents = []
+        for content in self.__posts.contents:
             content = self.__clearHTML(content)
             content = self.__applyNLP(content)
-            clean_contents.append(" ".join(content))
-            yield content
-
-    def _process(self):
+            cleanContents.append(content)
+        return cleanContents
+    
+    def __makeBigrams(self, cleanContents):
         # Train Phrases model
-        bigram_model = Phrases(self.__cleaning())
+        bigramModel = Phrases(cleanContents)
 
         # Make bi-grams
-        clean_contents = Stream(self.__tempFile, splitted=True)
-        pre_processed_contents = PreProcessedContents(overwrite=True)
-        for content in clean_contents:
-            content = ' '.join(bigram_model[content])
-            pre_processed_contents.append(content)
-        # Remove temporary file
-        remove(self.__tempFile)
+        for content in cleanContents:
+            content = ' '.join(bigramModel[content])
+            self.__pPosts.contents.append(content)
+
+    def _process(self):
+        self.__makeBigrams(self.__cleaning())

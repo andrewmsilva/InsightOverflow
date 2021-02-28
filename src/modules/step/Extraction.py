@@ -1,10 +1,10 @@
-from modules.Step import Step
-from modules.Data import Posts
+from .BaseStep import BaseStep
+from ..data.Posts import Posts
 
 from lxml import etree
 from redis import Redis
 
-class Extraction(Step):
+class Extraction(BaseStep):
 
     def __init__(self):
         super().__init__('Extraction')
