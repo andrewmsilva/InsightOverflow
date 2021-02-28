@@ -1,7 +1,7 @@
 from time import time
 import os, psutil
 
-class Step(object):
+class BaseStep(object):
 
     def __init__(self, name=None):
         self.__name = 'Unamed step'

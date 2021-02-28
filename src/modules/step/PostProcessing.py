@@ -1,5 +1,5 @@
-from modules.Step import Step
-from modules.Data import Users, Dates, PreProcessedContents
+from .BaseStep import BaseStep
+from ..data.Posts import Posts
 
 import tomotopy as tp
 import pandas as pd
@@ -13,7 +13,7 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import warnings
 warnings.filterwarnings("ignore")
 
-class PostProcessing(Step):
+class PostProcessing(BaseStep):
     
     def __init__(self):
         super().__init__('Post-processing')
