@@ -20,10 +20,12 @@ class BaseStream(object):
         if not self.__len:
             mode = "w"
             self.__len = 0
+            self.__data = []
         
         with open(self.__textFile, mode, errors="surrogatepass") as f:
             f.write(str(row)+'\n')
             self.__len += 1
+            self.__data.append(row)
 
     def __iter__(self):
         if not self.__data:
