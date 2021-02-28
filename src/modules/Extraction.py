@@ -52,6 +52,6 @@ class Extraction(Step):
                 while ancestor.getprevious() is not None:
                     del ancestor.getparent()[0]
 
-        print('  Extracted:', len(contents))
-        print('  Ignored:', total_count - len(contents))
+        print('  Extracted:', len(posts.contents))
+        print('  Ignored:', total_count - len(posts.contents))
         print('  Total:', total_count)
