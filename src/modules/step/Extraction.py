@@ -13,7 +13,7 @@ class Extraction(BaseStep):
     def _process(self):
         # Connect to Redis
         redis = Redis(host='localhost', port=6379, decode_responses=True)
-        posts = Posts()
+        posts = Posts(memory=False)
         # Get posts
         total_count = 0
         for event, element in etree.iterparse(self.databaseFile, tag='row'):
