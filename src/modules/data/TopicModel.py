@@ -4,7 +4,7 @@ from gensim.models import LdaMulticore, CoherenceModel
 from gensim.models.nmf import Nmf
 
 class TopicModel(object):
-    def __init__(self, corpus=None):
+    def __init__(self):
         self.__corpus = None
         self.__modelName = None
 
@@ -25,7 +25,7 @@ class TopicModel(object):
     def build(self, model_name, num_topics, chunksize, passes, corpus=None):
         self.__modelName = model_name
         # Update corpus if necessary
-        if corpus:
+        if isinstance(corpus, Corpus):
             self.__corpus = corpus
         # Build topic model
         if model_name == 'lda':
@@ -35,7 +35,7 @@ class TopicModel(object):
         # Build coherence model
         self.__buildCoherenceModel()
     
-    def __buildLDA(self, num_topics, chunksize, passes):                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+    def __buildLDA(self, num_topics, chunksize, passes):
         self.__model = LdaMulticore(
             self.__corpus,
             id2word=self.__corpus.getDictionary(),
