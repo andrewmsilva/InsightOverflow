@@ -32,16 +32,16 @@ class Corpus(object):
             self.__tfidf.save(self.__tfidfFile)
     
     def __bow(self):
-        for doc in self.__posts.contents:
-            yield self.__dictionary.doc2bow(doc)
+        for content in self.__posts.contents:
+            yield self.__dictionary.doc2bow(content.split())
     
     def build(self):
         self.__buildDictionary()
         self.__buildTFIDF()
 
         self.__corpus = []
-        for doc in self.__bow():
-            self.__corpus.append(self.__tfidf[doc])
+        for content in self.__bow():
+            self.__corpus.append(self.__tfidf[content])
 
     def getDictionary(self):
         return self.__dictionary
@@ -52,8 +52,8 @@ class Corpus(object):
     def __iter__(self):
         if not self.__corpus:
             self.build()
-        for doc in self.__bow():
-            yield self.__tfidf[doc]
+        for content in self.__bow():
+            yield self.__tfidf[content]
 
     def __getitem__(self, key):
         return self.__corpus[key]
