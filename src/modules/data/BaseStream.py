@@ -45,7 +45,7 @@ class BaseStream(object):
         if self.__memory:
             if not self.__data:
                 self.__loadData()
-            for item in data:
+            for item in self.__data:
                 yield self.itemProcessing(item)
         else:
             for item in self.__iterData():
