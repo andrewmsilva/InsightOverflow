@@ -4,7 +4,7 @@ from gensim.models import LdaMulticore, CoherenceModel
 from gensim.models.nmf import Nmf
 
 class TopicModel(object):
-    def __init__(self):
+    def __init__(self, corpus=None):
         self.__corpus = None
         self.__modelName = None
 
