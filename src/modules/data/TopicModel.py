@@ -1,4 +1,4 @@
-from modules.Corpus import Corpus
+from .Corpus import Corpus
 
 from gensim.models import LdaMulticore, CoherenceModel
 from gensim.models.nmf import Nmf
@@ -61,7 +61,7 @@ class TopicModel(object):
     def __buildCoherenceModel(self):
         self.__coherenceModel = CoherenceModel(
             model=self.__model,
-            texts=self.__corpus.getContents(),
+            texts=self.__corpus.getTexts(),
             coherence='c_v',
             processes=7
         )
