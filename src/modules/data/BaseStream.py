@@ -7,9 +7,6 @@ class BaseStream(object):
         self.__len = None
         self.__data = None
     
-    def itemProcessing(self, data):
-        return data
-    
     def __loadData(self):
         self.__data = []
         with open(self.__textFile, "r") as f:
@@ -46,19 +43,19 @@ class BaseStream(object):
             if not self.__data:
                 self.__loadData()
             for item in self.__data:
-                yield self.itemProcessing(item)
+                yield item
         else:
             for item in self.__iterData():
-                yield self.itemProcessing(item)
+                yield item
     
     def __getitem__(self, key):
         if self.__memory:
-            return self.itemProcessing(self.__data[key])
+            return self.__data[key]
         else:
             tmpKey = 0
             for item in self.__iterData():
                 if tmpKey == key:
-                    return self.itemProcessing(item)
+                    return item
                 else:
                     tmpKey += 1
     
