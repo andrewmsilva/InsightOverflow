@@ -9,9 +9,8 @@ class TopicModeling(BaseStep):
     def __init__(self):
         super().__init__('Topic modeling')
 
-        self.__corpus = None
-        self.__model = TopicModel()
         self.__corpus = Corpus()
+        self.__model = TopicModel()
 
         self.__experiments = pd.DataFrame(columns=['model_name', 'num_topics', 'chunksize', 'passes', 'execution_time', 'coherence'])
         self.__experimentsFile = 'results/experiments.csv'
