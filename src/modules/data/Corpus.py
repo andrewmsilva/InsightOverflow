@@ -4,10 +4,14 @@ from .Posts import Posts
 from gensim.corpora import Dictionary
 from gensim.models import TfidfModel
 
+def split(string):
+    return string.split()
+
 class Corpus(object):
 
     def __init__(self):
         self.__posts = Posts(preProcessed=True, maxLen=10000)
+        self.__posts.contents.itemProcessing = split
         self.__corpus = None
         
         self.__dictionaryFile = 'results/dictionary.bin'
@@ -33,7 +37,7 @@ class Corpus(object):
     
     def __bow(self):
         for content in self.__posts.contents:
-            yield self.__dictionary.doc2bow(content.split())
+            yield self.__dictionary.doc2bow(content)
     
     def build(self):
         self.__buildDictionary()
@@ -52,8 +56,8 @@ class Corpus(object):
     def __iter__(self):
         if not self.__corpus:
             self.build()
-        for content in self.__bow():
-            yield self.__tfidf[content]
+        for content in self.__corpus:
+            yield content
 
     def __getitem__(self, key):
         return self.__corpus[key]
