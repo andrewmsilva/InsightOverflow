@@ -7,22 +7,29 @@ class BaseStream(object):
         self.__len = None
         self.__data = None
     
+    def itemProcessing(self, data):
+        return data
+    
     def __loadData(self):
         self.__data = []
         with open(self.__textFile, "r") as f:
             self.__len = 0
             for row in f:
-                if not self.__maxLen or self.__maxLen > self.__len:
+                if not self.__maxLen or self.__len < self.__maxLen:
                     self.__data.append(row)
                     self.__len += 1
+                else:
+                    break
     
     def __iterData(self):
         with open(self.__textFile, "r") as f:
             self.__len = 0
             for row in f:
-                if not self.__maxLen or self.__maxLen > self.__len:
+                if not self.__maxLen or self.__len < self.__maxLen:
                     self.__len += 1
                     yield row
+                else:
+                    break
     
     def append(self, row):
         mode = "a"
@@ -43,19 +50,19 @@ class BaseStream(object):
             if not self.__data:
                 self.__loadData()
             for item in self.__data:
-                yield item
+                yield self.itemProcessing(item)
         else:
             for item in self.__iterData():
-                yield item
+                yield self.itemProcessing(item)
     
     def __getitem__(self, key):
         if self.__memory:
-            return self.__data[key]
+            return self.itemProcessing(self.__data[key])
         else:
             tmpKey = 0
             for item in self.__iterData():
                 if tmpKey == key:
-                    return item
+                    return self.itemProcessing(item)
                 else:
                     tmpKey += 1
     
