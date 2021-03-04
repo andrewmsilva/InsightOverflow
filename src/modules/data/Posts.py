@@ -7,7 +7,7 @@ class Posts(object):
         self.dates = BaseStream("data/dates.txt", maxLen, memory)
 
         if preProcessed:
-            self.contents = BaseStream("data/data/pre-processed-contents.txt", maxLen, memory)
+            self.contents = BaseStream("data/pre-processed-contents.txt", maxLen, memory)
         else:
             self.contents = BaseStream("data/contents.txt", maxLen, memory)
     
@@ -18,3 +18,6 @@ class Posts(object):
                 'user': user,
                 'date': date,
             }
+    
+    def __len__(self):
+        return len(self.contents)
