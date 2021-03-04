@@ -15,7 +15,7 @@ class BaseStream(object):
         with open(self.__textFile, "r") as f:
             self.__len = 0
             for row in f:
-                if not self.__maxLen or self.__maxLen < self.__len:
+                if not self.__maxLen or self.__maxLen > self.__len:
                     self.__data.append(row)
                     self.__len += 1
     
@@ -23,7 +23,7 @@ class BaseStream(object):
         with open(self.__textFile, "r") as f:
             self.__len = 0
             for row in f:
-                if not self.__maxLen or self.__maxLen < self.__len:
+                if not self.__maxLen or self.__maxLen > self.__len:
                     self.__len += 1
                     yield row
     
