@@ -10,7 +10,7 @@ def split(string):
 class Corpus(object):
 
     def __init__(self):
-        self.__posts = Posts(preProcessed=True, maxLen=10000)
+        self.__posts = Posts(preProcessed=True)
         self.__posts.contents.itemProcessing = split
         self.__corpus = None
         
