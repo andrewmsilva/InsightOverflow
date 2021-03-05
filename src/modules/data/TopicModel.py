@@ -43,7 +43,7 @@ class TopicModel(object):
             chunksize=chunksize,
             passes=passes,
             eval_every=None,
-            workers=7,
+            workers=40,
             random_state=10
         )
     
