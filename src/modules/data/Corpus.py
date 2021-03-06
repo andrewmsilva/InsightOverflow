@@ -55,7 +55,7 @@ class Corpus(object):
         return self.__posts.contents
     
     def __iter__(self):
-        if not self.__dictionary or not slef.__tfidf:
+        if not self.__dictionary or not self.__tfidf:
             self.build()
         for content in self.__bow():
             yield self.__tfidf[content]
