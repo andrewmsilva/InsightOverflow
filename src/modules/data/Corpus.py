@@ -12,10 +12,12 @@ class Corpus(object):
     def __init__(self):
         self.__posts = Posts(preProcessed=True)
         self.__posts.contents.itemProcessing = split
-        self.__corpus = None
         
         self.__dictionaryFile = 'results/dictionary.bin'
+        self.__dictionary = None
+
         self.__tfidfFile = 'results/tfidf.bin'
+        self.__tfidf = None
     
     def __buildDictionary(self):
         try:
@@ -43,10 +45,6 @@ class Corpus(object):
         self.__buildDictionary()
         self.__buildTFIDF()
 
-        self.__corpus = []
-        for content in self.__bow():
-            self.__corpus.append(self.__tfidf[content])
-
     def getDictionary(self):
         return self.__dictionary
     
@@ -54,10 +52,10 @@ class Corpus(object):
         return self.__posts.contents
     
     def __iter__(self):
-        if not self.__corpus:
+        if not self.__dictionary or not slef.__tfidf:
             self.build()
-        for content in self.__corpus:
-            yield content
+        for content in self.__bow():
+            yield self.__tfidf[content]
 
     def __getitem__(self, key):
         return self.__corpus[key]
