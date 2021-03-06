@@ -61,7 +61,7 @@ class Corpus(object):
             yield self.__tfidf[content]
 
     def __getitem__(self, key):
-        return self.__corpus[key]
+        return self.__tfidf[self.__dictionary.doc2bow(self.__posts.contents[key])]
 
     def __len__(self):
         return self.__length
