@@ -18,6 +18,8 @@ class Corpus(object):
 
         self.__tfidfFile = 'results/tfidf.bin'
         self.__tfidf = None
+
+        self.__length = None
     
     def __buildDictionary(self):
         try:
@@ -44,6 +46,7 @@ class Corpus(object):
     def build(self):
         self.__buildDictionary()
         self.__buildTFIDF()
+        self.__length = len(self.__posts)
 
     def getDictionary(self):
         return self.__dictionary
@@ -61,4 +64,4 @@ class Corpus(object):
         return self.__corpus[key]
 
     def __len__(self):
-        return len(self.__posts)
+        return self.__length
