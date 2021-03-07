@@ -50,7 +50,7 @@ class TopicModeling(BaseStep):
     def __runExperiments(self):
         model_name_list = ['lda', 'nmf']
         chunksize_list = [5000, 50000, 500000]
-        passes_list = [50, 100, 150, 200, 250, 300]
+        passes_list = [1, 10, 50, 100, 150, 200]
         num_topics_list = [10, 20, 30, 40, 50, 60, 80, 90, 100]
         # Starting experiments
         for model_name in model_name_list:
