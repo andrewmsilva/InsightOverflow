@@ -19,6 +19,8 @@ class Corpus(object):
         self.__tfidfFile = 'results/tfidf.bin'
         self.__tfidf = None
 
+        self.__corpus = None
+
         self.__length = None
     
     def __buildDictionary(self):
@@ -46,7 +48,10 @@ class Corpus(object):
     def build(self):
         self.__buildDictionary()
         self.__buildTFIDF()
-        self.__length = len(self.__posts)
+        
+        self.__corpus =[]
+        for content in self.__bow():
+            self.__corpus.append(self.__tfidf[content])
 
     def getDictionary(self):
         return self.__dictionary
@@ -55,13 +60,14 @@ class Corpus(object):
         return self.__posts.contents
     
     def __iter__(self):
-        if not self.__dictionary or not self.__tfidf:
+        if not self.__dictionary or not self.__tfidf or not self.__corpus:
             self.build()
-        for content in self.__bow():
-            yield self.__tfidf[content]
+        for content in self.__corpus:
+            yield content
 
     def __getitem__(self, key):
-        return self.__tfidf[self.__dictionary.doc2bow(self.__posts.contents[key])]
+        return self.__corpus[key]
 
     def __len__(self):
-        return self.__length
+        if self.__corpus:
+            return len(self.__corpus)
