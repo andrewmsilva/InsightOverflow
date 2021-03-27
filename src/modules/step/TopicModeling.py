@@ -9,7 +9,7 @@ class TopicModeling(BaseStep):
     def __init__(self):
         super().__init__('Topic modeling')
 
-        self.__corpus = None
+        self.__corpus = Corpus()
         self.__model = TopicModel()
 
         self.__experiments = pd.DataFrame(columns=['model_name', 'num_topics', 'chunksize', 'passes', 'execution_time', 'coherence'])
@@ -18,13 +18,13 @@ class TopicModeling(BaseStep):
     # Experiment methods
 
     def __formatExecutionTime(self, execution_time):
-        step = Step()
+        step = BaseStep()
         step.setExcecutionTime(execution_time)
         return step.getFormatedExecutionTime()
     
     def __buildCorpus(self):
         start_time = time()
-        self.__corpus = Corpus()
+        self.__corpus.build()
         execution_time = self.__formatExecutionTime(time()-start_time)
         print('  Corpus built: {}'.format(execution_time))
 
@@ -50,7 +50,7 @@ class TopicModeling(BaseStep):
     def __runExperiments(self):
         model_name_list = ['lda', 'nmf']
         chunksize_list = [5000, 50000, 500000]
-        passes_list = [50, 100, 200]
+        passes_list = [1, 10, 50, 100, 150, 200]
         num_topics_list = [10, 20, 30, 40, 50, 60, 80, 90, 100]
         # Starting experiments
         for model_name in model_name_list:

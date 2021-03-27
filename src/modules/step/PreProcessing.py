@@ -21,8 +21,8 @@ class PreProcessing(BaseStep):
     def __init__(self):
         super().__init__('Pre-processing')
         self.__wordNet = WordNetLemmatizer()
-        self.__posts = Posts()
-        self.__pPosts = Posts(preProcessed=True)
+        self.__posts = Posts(memory=False)
+        self.__pPosts = Posts(preProcessed=True, memory=False)
     
     def __clearHTML(self, content):
         soup = BeautifulSoup(content, 'lxml')
