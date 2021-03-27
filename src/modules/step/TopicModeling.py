@@ -1,18 +1,23 @@
 from .BaseStep import BaseStep, time
-from ..data.Corpus import Corpus
-from ..data.TopicModel import TopicModel
+from ..data.Posts import Posts
 
 import pandas as pd
+import tomotopy as tp
+from multiprocessing import Process
+import gc
+
+def split(string):
+    return string.split()
 
 class TopicModeling(BaseStep):
     
     def __init__(self):
         super().__init__('Topic modeling')
 
-        self.__corpus = Corpus()
-        self.__model = TopicModel()
+        self.__posts = Posts(preProcessed=True, memory=False, maxLen=10000)
+        self.__posts.contents.itemProcessing = split
 
-        self.__experiments = pd.DataFrame(columns=['model_name', 'num_topics', 'chunksize', 'passes', 'execution_time', 'coherence'])
+        self.__modelFile = 'results/model.bin'
         self.__experimentsFile = 'results/experiments.csv'
 
     # Experiment methods
@@ -21,49 +26,62 @@ class TopicModeling(BaseStep):
         step = BaseStep()
         step.setExcecutionTime(execution_time)
         return step.getFormatedExecutionTime()
-    
-    def __buildCorpus(self):
-        start_time = time()
-        self.__corpus.build()
-        execution_time = self.__formatExecutionTime(time()-start_time)
-        print('  Corpus built: {}'.format(execution_time))
 
-    def __saveExperiment(self, model_name, num_topics, chunksize, passes, execution_time, coherence):
-        # Save model with greatest coherence
-        if self.__experiments.empty or self.__experiments.iloc[self.__experiments['coherence'].idxmax()]['coherence'] < coherence:
-            self.__model.save()        
-        # Save experiment to CSV
-        execution_time = self.__formatExecutionTime(execution_time)
-        row = {
-            'model_name': model_name,
-            'num_topics': num_topics,
-            'chunksize': chunksize,
-            'passes': passes,
-            'execution_time': execution_time,
-            'coherence': coherence
-        }
-        self.__experiments = self.__experiments.append(row, ignore_index=True)
-        self.__experiments.to_csv(self.__experimentsFile)
+    def __addCorpus(self, model):
+        for content in self.__posts.contents:
+            if len(content) > 0:
+                model.add_doc(content)
     
-        print('  Experiment done: {}, {}, {}, {} | {}, {:.4f}'.format(model_name, chunksize, num_topics, passes, execution_time, coherence))
-    
-    def __runExperiments(self):
-        model_name_list = ['lda', 'nmf']
-        chunksize_list = [5000, 50000, 500000]
-        passes_list = [1, 10, 50, 100, 150, 200]
-        num_topics_list = [10, 20, 30, 40, 50, 60, 80, 90, 100]
-        # Starting experiments
-        for model_name in model_name_list:
-            for chunksize in chunksize_list:
-                for passes in passes_list:
-                    for num_topics in num_topics_list:
-                        start_time = time()
-                        # Build topic model and compute coherence
-                        self.__model.build(model_name, num_topics, chunksize, passes, self.__corpus)
-                        coherence = self.__model.getCoherence()
-                        # Save experiment to file
-                        self.__saveExperiment(model_name, num_topics, chunksize, passes, time()-start_time, coherence)
+    def __trainModel(self, num_topics):
+        # Load experiments
+        experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
+        # Running if this is a new experiment
+        if not (experiments['num_topics'] == num_topics).any():
+            # Create model and add corpus
+            model = tp.LDAModel(k=num_topics, min_df=200, rm_top=20, seed=10)
+            self.__addCorpus(model)
+            # Iterate
+            for iterations in range(1, 21):
+                # Train model
+                model.train(iter=1, workers=0)
+                # Compute c_v coherence
+                cv = tp.coherence.Coherence(model, coherence='c_v')
+                coherence = cv.get_score()       
+                # Save model if it has the greatest coherence
+                if experiments.empty or experiments.iloc[experiments['coherence'].idxmax()]['coherence'] < coherence:
+                    model.save(self.__modelFile)
+                # Save experiment
+                row = [model.k, model.global_step, model.perplexity, coherence]
+                experiments = experiments.append(dict(zip(experiments.columns, row)), ignore_index=True)
+                experiments.to_csv(self.__experimentsFile)
+                # Print result
+                print('  Experiment done: k={} i={} p={:.2f} cv={:.2f}'.format(row[0], row[1], row[2], row[3]))  
+            # Clear memory
+            del model, cv, experiments
+            gc.collect()
+        return 0  
 
     def _process(self):
-        self.__buildCorpus()
-        self.__runExperiments()
+        # Create experiments csv
+        try:
+            experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
+        except:
+            experiments = pd.DataFrame(columns=['num_topics', 'iterations', 'perplexity', 'coherence'])
+            experiments.to_csv(self.__experimentsFile)
+        
+        # Run experiments
+        max_topics = 100
+        for num_topics in range(10, max_topics+1, 10):
+            p = Process(target=self.__trainModel, args=[num_topics])
+            p.start()
+            p.join()
+            p.terminate()
+
+            # Clear memory
+            del p
+            gc.collect()
+        
+        # Print best experiment
+        experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
+        best = experiments.iloc[experiments['coherence'].idxmax()]
+        print('  Best experiment: i={} k={} p={:.2f} cv={:.2f}'.format(best['num_topics'], best['iterations'], best['perplexity'], best['coherence']))
