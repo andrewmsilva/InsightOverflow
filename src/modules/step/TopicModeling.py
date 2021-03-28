@@ -14,7 +14,7 @@ class TopicModeling(BaseStep):
     def __init__(self):
         super().__init__('Topic modeling')
 
-        self.__posts = Posts(preProcessed=True, memory=False, maxLen=10000)
+        self.__posts = Posts(preProcessed=True, memory=False)
         self.__posts.contents.itemProcessing = split
 
         self.__modelFile = 'results/model.bin'
@@ -43,7 +43,7 @@ class TopicModeling(BaseStep):
             # Iterate
             for iterations in range(1, 21):
                 # Train model
-                model.train(iter=1, workers=0)
+                model.train(iter=1, workers=50)
                 # Compute c_v coherence
                 cv = tp.coherence.Coherence(model, coherence='c_v')
                 coherence = cv.get_score()       
