@@ -7,8 +7,11 @@ class BaseStream(object):
         self.__len = None
         self.__data = None
     
-    def itemProcessing(self, data):
+    def __itemProcessing(self, data):
         return data
+
+    def setItemProcessing(self, function):
+        self.__itemProcessing = function
     
     def __loadData(self):
         self.__data = []
@@ -50,19 +53,19 @@ class BaseStream(object):
             if not self.__data:
                 self.__loadData()
             for item in self.__data:
-                yield self.itemProcessing(item)
+                yield self.__itemProcessing(item)
         else:
             for item in self.__iterData():
-                yield self.itemProcessing(item)
+                yield self.__itemProcessing(item)
     
     def __getitem__(self, key):
         if self.__memory:
-            return self.itemProcessing(self.__data[key])
+            return self.__itemProcessing(self.__data[key])
         else:
             tmpKey = 0
             for item in self.__iterData():
                 if tmpKey == key:
-                    return self.itemProcessing(item)
+                    return self.__itemProcessing(item)
                 else:
                     tmpKey += 1
     
