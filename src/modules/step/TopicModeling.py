@@ -14,8 +14,7 @@ class TopicModeling(BaseStep):
     def __init__(self):
         super().__init__('Topic modeling')
 
-        self.__posts = Posts(preProcessed=True, memory=False)
-        self.__posts.contents.itemProcessing = split
+        self.__posts = Posts(preProcessed=True, memory=False, slitted=True)
 
         self.__modelFile = 'results/model.bin'
         self.__experimentsFile = 'results/experiments.csv'
@@ -35,27 +34,34 @@ class TopicModeling(BaseStep):
     def __trainModel(self, num_topics):
         # Load experiments
         experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
+
         # Running if this is a new experiment
         if not (experiments['num_topics'] == num_topics).any():
             # Create model and add corpus
             model = tp.LDAModel(k=num_topics, min_df=200, rm_top=20, seed=10)
             self.__addCorpus(model)
+
             # Iterate
             for iterations in range(1, 21):
                 # Train model
                 model.train(iter=1, workers=50)
+
                 # Compute c_v coherence
                 cv = tp.coherence.Coherence(model, coherence='c_v')
-                coherence = cv.get_score()       
+                coherence = cv.get_score()
+
                 # Save model if it has the greatest coherence
                 if experiments.empty or experiments.iloc[experiments['coherence'].idxmax()]['coherence'] < coherence:
                     model.save(self.__modelFile)
+            
                 # Save experiment
                 row = [model.k, model.global_step, model.perplexity, coherence]
                 experiments = experiments.append(dict(zip(experiments.columns, row)), ignore_index=True)
                 experiments.to_csv(self.__experimentsFile)
+
                 # Print result
                 print('  Experiment done: k={} i={} p={:.2f} cv={:.2f}'.format(row[0], row[1], row[2], row[3]))  
+
             # Clear memory
             del model, cv, experiments
             gc.collect()

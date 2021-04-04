@@ -24,14 +24,12 @@ class PostProcessing(BaseStep):
         self.__experimentsFile = 'results/experiments.csv'
         self.__experiments = None
 
-        self.__users = Users()
-        self.__dates = Dates()
-        self.__posts = PreProcessedContents(splitted=True)
+        self.__posts = Posts(preProcessed=True, memory=False, splitted=True)
 
         self.__generalPopularityFile = 'results/general-popularity.json'
-        self.__generalSemmianualPopularityFile = 'results/general-semmianual-popularity.json'
+        self.__generalMonthlyPopularityFile = 'results/general-semmianual-popularity.json'
         self.__userPopularityFile = 'results/user-popularity.json'
-        self.__userSemmianualPopularityFile = 'results/user-semmianual-popularity.json'
+        self.__userMonthlyPopularityFile = 'results/user-semmianual-popularity.json'
     
     def __coherenceChart(self):
         fig = plt.figure()
@@ -103,56 +101,62 @@ class PostProcessing(BaseStep):
     
     def __initMetrics(self):
         self.__generalPopularity = self.__topicMetrics
-        self.__generalSemmianualPopularity = []
+        self.__generalMonthlyPopularity = []
         self.__userPopularity = []
-        self.__userSemmianualPopularity = []
+        self.__userMonthlyPopularity = []
     
     def __getTopics(self, topic_distribution, threshold=0.1):
         topics = list(zip(range(len(topic_distribution)), topic_distribution))
         topics.sort(key=lambda value: value[1])
 
+        # Remove topics below threshold and normalize
         for i in range(len(topics)-1, -1, -1):
             topic, weight = topics[i]
             if weight < threshold:
                 del topics[i]
-            normalizer = 1 / float( sum([ weight for _, weight in topics ]) )
-            topics = [ (topic, weight*normalizer) for topic, weight in topics ]
+                normalizer = 1 / float( sum([ weight for _, weight in topics ]) )
+                topics = [ (topic, weight*normalizer) for topic, weight in topics ]
+            else:
+                break
         
         return topics
 
     def __computeMetrics(self):
         self.__initMetrics()
-        # Compute measures
         num_posts = len(self.__model.docs)
-        data = zip(self.__posts, self.__users)
-        for (post, user) in data:
+
+        # Compute measures
+        for post in self.__posts:
             if self.__generalPopularity['count'] == num_posts:
                 break
-            elif len(post) > 0:
+            elif len(post['content']) > 0:
                 # Counting posts for general popularity
                 self.__generalPopularity['count'] += 1
                 print('  Posts covered:', self.__generalPopularity['count'], end='\r')
+
                 # Counting posts for user popularity
                 users = [ user_['user'] for user_ in self.__userPopularity ]
-                user_i = users.index(user) if user in users else None
+                user_i = users.index(post['user']) if post['user'] in users else None
                 if not user_i:
                     user_i = len(self.__userPopularity)
                     self.__userPopularity.append(self.__topicMetrics)
-                    self.__userPopularity[user_i]['user'] = user
+                    self.__userPopularity[user_i]['user'] = post['user']
                 self.__userPopularity[user_i]['count'] += 1
-                # Getting post topics
-                post = self.__model.docs[self.__generalPopularity['count']-1]
-                topics = self.__getTopics(post.get_topic_dist())
+
+                # Get post topics
+                post['content'] = self.__model.docs[self.__generalPopularity['count']-1]
+                topics = self.__getTopics(post['content'].get_topic_dist())
                 for topic, weight in topics:
-                    # Computing values for general popularity
+                    # Compute values for general popularity
                     self.__generalPopularity['absolute'][topic] += 1
                     self.__generalPopularity['relative'][topic] += weight
-                    # Computing values for user popularity
+
+                    # Compute values for user popularity
                     self.__userPopularity[user_i]['absolute'][topic] += 1
                     self.__userPopularity[user_i]['relative'][topic] += weight
 
         # Finishing relative popularity calculation
-        for topic in range(self.__experiment.num_topics):
+        for topic in range(int(self.__experiment.num_topics)):
             self.__generalPopularity['relative'][topic] /= self.__generalPopularity['count']
             for user_i in range(len(self.__userPopularity)):
                 self.__userPopularity[user_i]['relative'][topic] /= self.__userPopularity[user_i]['count']
@@ -160,12 +164,12 @@ class PostProcessing(BaseStep):
     def __saveMetrics(self):
         with open(self.__generalPopularityFile, 'w') as f:
             f.write(json.dumps(self.__generalPopularity))
-        with open(self.__generalSemmianualPopularityFile, 'w') as f:
-            f.write(json.dumps(self.__generalSemmianualPopularity))
+        with open(self.__generalMonthlyPopularityFile, 'w') as f:
+            f.write(json.dumps(self.__generalMonthlyPopularity))
         with open(self.__userPopularityFile, 'w') as f:
             f.write(json.dumps(self.__userPopularity))
-        with open(self.__userSemmianualPopularityFile, 'w') as f:
-            f.write(json.dumps(self.__userSemmianualPopularity))
+        with open(self.__userMonthlyPopularityFile, 'w') as f:
+            f.write(json.dumps(self.__userMonthlyPopularity))
     
     def __printResults(self):
         print('  Number of posts: {}'.format(self.__generalPopularity['count']))
