@@ -27,24 +27,44 @@ class PostProcessing(BaseStep):
 
         self.__posts = Posts(preProcessed=True, memory=False, splitted=True)
 
-        self.__databaseFile = 'results/topic-metrics.db'
-        self.__database = None
+        self.__topicsFile = 'results/topics.csv'
+        self.__topicsFields = ['topic', 'words', 'labels']
 
-        self.__generalPopularityFile = 'results/general-popularity.json'
-        self.__userPopularityFile = 'results/user-popularity.json'
-        self.__csvFields = ['user', 'topic', 'year', 'month', 'absolutePopularity', 'relativePopularity']
+        self.__generalPopularityFile = 'results/general-popularity.csv'
+        self.__userPopularityFile = 'results/user-popularity.csv'
+        self.__popularityFields = ['user', 'topic', 'year', 'month', 'absolutePopularity', 'relativePopularity']
+    
+    def __createCSV(self, csvName, fields):
+        with open(csvName, 'w', newline='') as csvFile:
+            writer = csv.DictWriter(csvFile, fieldnames=fields)
+            writer.writeheader()
+    
+    def __appendToCSV(self, csvName, data):
+        with open(csvName, 'a', newline='') as csvFile:
+            writer = csv.DictWriter(csvFile, fieldnames=data.keys())
+            writer.writerow(data)
 
     def __findLabels(self):
-         # Extract candidates for auto topic labeling
+        print('  Extracting topics and labels')
+
+        # Create CSV
+        self.__createCSV(self.__topicsFile, self.__topicsFields)
+
+        # Extract candidates for auto topic labeling
         extractor = tp.label.PMIExtractor(min_cf=10, min_df=5, max_len=5, max_cand=10000)
         cands = extractor.extract(self.__model)
 
         # Rank the candidates of labels for a specific topic
         labeler = tp.label.FoRelevance(self.__model, cands, min_df=5, smoothing=1e-2, mu=0.25)
         for topic in range(self.__model.k):
-            print("Topic #{}".format(topic))
-            print("  Labels:", ', '.join(label for label, score in labeler.get_topic_labels(topic, top_n=5)))
-            print("  Words: {}".format(', '.join([ t[0] for t in self.__model.get_topic_words(topic) ])))
+            self.__appendToCSV(
+                self.__topicsFile,
+                {
+                    'topic': topic,
+                    'words': ', '.join([ t[0] for t in self.__model.get_topic_words(topic) ]),
+                    'labels': ', '.join(label for label, score in labeler.get_topic_labels(topic, top_n=5))
+                }
+            )
     
     def __createCoherenceChart(self):
         fig = plt.figure()
@@ -101,23 +121,6 @@ class PostProcessing(BaseStep):
 
         plt.savefig('results/Perplexity-Chart.png')
         plt.clf()
-
-    def __createCSV(self, csvName):
-        with open(csvName, 'w', newline='') as csvFile:
-            writer = csv.DictWriter(csvFile, fieldnames=self.__csvFields)
-            writer.writeheader()
-    
-    def __appendToCSV(self, csvName, user, topic, year, month, absolutePopularity, relativePopularity):
-        with open(csvName, 'a', newline='') as csvFile:
-            writer = csv.DictWriter(csvFile, fieldnames=self.__csvFields)
-            writer.writerow({
-                'user': user,
-                'topic': topic,
-                'year': year,
-                'month': month,
-                'absolutePopularity': absolutePopularity,
-                'relativePopularity': relativePopularity,
-            })
     
     def __getTopics(self, topic_distribution, threshold=0.1):
         topics = list(zip(range(len(topic_distribution)), topic_distribution))
@@ -134,6 +137,8 @@ class PostProcessing(BaseStep):
                 return topics
 
     def __computeUserPopularity(self):
+        print('  Computing user popularity')
+
         numPosts = len(self.__model.docs)
         userDates = {}
         popularityCalculation = {}
@@ -146,7 +151,7 @@ class PostProcessing(BaseStep):
             # Compute the metrics if content is not empty
             elif len(post['content']) > 0:
                 index += 1
-                print('  Posts covered:', index+1, end='\r')
+                print('    Posts covered:', index+1, end='\r')
 
                 # Get data
                 content = post['content']
@@ -185,7 +190,8 @@ class PostProcessing(BaseStep):
                         popularityCalculation[weightSumKey] += weight
 
         # Create CSV
-        self.__createCSV(self.__userPopularityFile)
+        self.__createCSV(self.__userPopularityFile, self.__popularityFields)
+        print()
 
         # Finishing relative popularity calculation
         calculatedCount = 0
@@ -195,7 +201,7 @@ class PostProcessing(BaseStep):
                 for topic in range(self.__model.k):
                     # Print elapsed metric
                     calculatedCount += 1
-                    print('  Calculated metrics:', calculatedCount, end='\r')
+                    print('    Computed metrics:', calculatedCount, end='\r')
 
                     # Define redis keys
                     countKey = 'count'+user+str(topic)+year+month
@@ -214,7 +220,18 @@ class PostProcessing(BaseStep):
                     relativePopularity = weightSum / monthCount
 
                     # Insert popularity to database
-                    self.__appendToCSV(self.__userPopularityFile, topic, int(user), year, month, absolutePopularity, relativePopularity)
+                    self.__appendToCSV(
+                        self.__userPopularityFile,
+                        {
+                            'user': user,
+                            'topic': topic,
+                            'year': year,
+                            'month': month,
+                            'absolutePopularity': absolutePopularity,
+                            'relativePopularity': relativePopularity,
+                        }
+                    )
+        print()
     
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
