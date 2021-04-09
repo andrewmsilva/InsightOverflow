@@ -4,6 +4,7 @@ from ..data.Posts import Posts
 import tomotopy as tp
 import pandas as pd
 import json
+import csv
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -26,12 +27,26 @@ class PostProcessing(BaseStep):
 
         self.__posts = Posts(preProcessed=True, memory=False, splitted=True)
 
+        self.__databaseFile = 'results/topic-metrics.db'
+        self.__database = None
+
         self.__generalPopularityFile = 'results/general-popularity.json'
-        self.__generalMonthlyPopularityFile = 'results/general-semmianual-popularity.json'
         self.__userPopularityFile = 'results/user-popularity.json'
-        self.__userMonthlyPopularityFile = 'results/user-semmianual-popularity.json'
+        self.__csvFields = ['user', 'topic', 'year', 'month', 'absolutePopularity', 'relativePopularity']
+
+    def __findLabels(self):
+         # Extract candidates for auto topic labeling
+        extractor = tp.label.PMIExtractor(min_cf=10, min_df=5, max_len=5, max_cand=10000)
+        cands = extractor.extract(self.__model)
+
+        # Rank the candidates of labels for a specific topic
+        labeler = tp.label.FoRelevance(self.__model, cands, min_df=5, smoothing=1e-2, mu=0.25)
+        for topic in range(self.__model.k):
+            print("Topic #{}".format(topic))
+            print("  Labels:", ', '.join(label for label, score in labeler.get_topic_labels(topic, top_n=5)))
+            print("  Words: {}".format(', '.join([ t[0] for t in self.__model.get_topic_words(topic) ])))
     
-    def __coherenceChart(self):
+    def __createCoherenceChart(self):
         fig = plt.figure()
         ax = fig.gca(projection='3d')
 
@@ -50,7 +65,7 @@ class PostProcessing(BaseStep):
         ax.zaxis.set_major_locator(LinearLocator(10))
         ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
 
-        ax.set_title('Best experiment: iterations={} topics={} coherence={:.4f}'.format(Y_max, X_max, Z_max), pad=20)
+        ax.set_title('Best experiment: iterations={} topics={} coherence={:.4f}'.format(Y_max, X_max, Z_max), pad=25)
         ax.set_xlabel('Topics')
         ax.set_ylabel('Iterations')
         ax.set_zlabel('Coherence')
@@ -59,7 +74,7 @@ class PostProcessing(BaseStep):
         plt.savefig('results/Coherence-Chart.png')
         plt.clf()
     
-    def __perplexityChart(self):
+    def __createPerplexityChart(self):
         fig = plt.figure()
         ax = fig.gca(projection='3d')
 
@@ -74,7 +89,7 @@ class PostProcessing(BaseStep):
 
         surface = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0)
 
-        ax.text(X_max, Y_max, Z_max, 'V', fontsize=12)
+        ax.text(X_max, Y_max, Z_max, 'V', fontsize=8)
         ax.zaxis.set_major_locator(LinearLocator(10))
         ax.zaxis.set_major_formatter(FormatStrFormatter('%.0f'))
         fig.colorbar(surface, shrink=0.5, aspect=5)
@@ -87,23 +102,22 @@ class PostProcessing(BaseStep):
         plt.savefig('results/Perplexity-Chart.png')
         plt.clf()
 
-    def __printTopics(self):
-        for topic in range(self.__model.k):
-            print('  Topic {}: {}'.format(topic, ', '.join([ t[0] for t in self.__model.get_topic_words(topic) ])))
+    def __createCSV(self, csvName):
+        with open(csvName, 'w', newline='') as csvFile:
+            writer = csv.DictWriter(csvFile, fieldnames=self.__csvFields)
+            writer.writeheader()
     
-    @property
-    def __topicMetrics(self):
-        return {
-            'count': 0,
-            'absolute': [0]*int(self.__experiment.num_topics),
-            'relative': [0]*int(self.__experiment.num_topics)
-        }
-    
-    def __initMetrics(self):
-        self.__generalPopularity = self.__topicMetrics
-        self.__generalMonthlyPopularity = []
-        self.__userPopularity = []
-        self.__userMonthlyPopularity = []
+    def __appendToCSV(self, csvName, user, topic, year, month, absolutePopularity, relativePopularity):
+        with open(csvName, 'a', newline='') as csvFile:
+            writer = csv.DictWriter(csvFile, fieldnames=self.__csvFields)
+            writer.writerow({
+                'user': user,
+                'topic': topic,
+                'year': year,
+                'month': month,
+                'absolutePopularity': absolutePopularity,
+                'relativePopularity': relativePopularity,
+            })
     
     def __getTopics(self, topic_distribution, threshold=0.1):
         topics = list(zip(range(len(topic_distribution)), topic_distribution))
@@ -117,74 +131,99 @@ class PostProcessing(BaseStep):
                 normalizer = 1 / float( sum([ weight for _, weight in topics ]) )
                 topics = [ (topic, weight*normalizer) for topic, weight in topics ]
             else:
-                break
-        
-        return topics
+                return topics
 
-    def __computeMetrics(self):
-        self.__initMetrics()
-        num_posts = len(self.__model.docs)
+    def __computeUserPopularity(self):
+        numPosts = len(self.__model.docs)
+        userDates = {}
+        popularityCalculation = {}
+        index = -1
 
-        # Compute measures
         for post in self.__posts:
-            if self.__generalPopularity['count'] == num_posts:
+            # Stop when reach the last post in the model
+            if index+1 == numPosts:
                 break
+            # Compute the metrics if content is not empty
             elif len(post['content']) > 0:
-                # Counting posts for general popularity
-                self.__generalPopularity['count'] += 1
-                print('  Posts covered:', self.__generalPopularity['count'], end='\r')
+                index += 1
+                print('  Posts covered:', index+1, end='\r')
 
-                # Counting posts for user popularity
-                users = [ user_['user'] for user_ in self.__userPopularity ]
-                user_i = users.index(post['user']) if post['user'] in users else None
-                if not user_i:
-                    user_i = len(self.__userPopularity)
-                    self.__userPopularity.append(self.__topicMetrics)
-                    self.__userPopularity[user_i]['user'] = post['user']
-                self.__userPopularity[user_i]['count'] += 1
+                # Get data
+                content = post['content']
+                user = post['user']
+                date = post['date'].split('-')
+                year, month  = (date[0], date[1])
 
+                # Update user dates
+                if not user in userDates.keys():
+                    userDates[user] = {(year, month): 1}
+                elif not (year, month) in userDates[user].keys():
+                    userDates[user][(year, month)] = 1
+                else:
+                    userDates[user][(year, month)] += 1
+                
                 # Get post topics
-                post['content'] = self.__model.docs[self.__generalPopularity['count']-1]
-                topics = self.__getTopics(post['content'].get_topic_dist())
-                for topic, weight in topics:
-                    # Compute values for general popularity
-                    self.__generalPopularity['absolute'][topic] += 1
-                    self.__generalPopularity['relative'][topic] += weight
+                content = self.__model.docs[index]
+                topics = self.__getTopics(content.get_topic_dist())
 
-                    # Compute values for user popularity
-                    self.__userPopularity[user_i]['absolute'][topic] += 1
-                    self.__userPopularity[user_i]['relative'][topic] += weight
+                # Count and sum weight for each topic
+                for topic, weight in topics:
+                    # Define redis keys
+                    countKey = 'count'+user+str(topic)+year+month
+                    weightSumKey = 'weight'+user+str(topic)+year+month
+
+                    # Update post counting for this topic
+                    if not countKey in popularityCalculation.keys():
+                        popularityCalculation[countKey] = 1
+                    else:
+                        popularityCalculation[countKey] += 1
+                    
+                    # Update post weight summation for this topic
+                    if not weightSumKey in popularityCalculation.keys():
+                        popularityCalculation[weightSumKey] = weight
+                    else:
+                        popularityCalculation[weightSumKey] += weight
+
+        # Create CSV
+        self.__createCSV(self.__userPopularityFile)
 
         # Finishing relative popularity calculation
-        for topic in range(int(self.__experiment.num_topics)):
-            self.__generalPopularity['relative'][topic] /= self.__generalPopularity['count']
-            for user_i in range(len(self.__userPopularity)):
-                self.__userPopularity[user_i]['relative'][topic] /= self.__userPopularity[user_i]['count']
-    
-    def __saveMetrics(self):
-        with open(self.__generalPopularityFile, 'w') as f:
-            f.write(json.dumps(self.__generalPopularity))
-        with open(self.__generalMonthlyPopularityFile, 'w') as f:
-            f.write(json.dumps(self.__generalMonthlyPopularity))
-        with open(self.__userPopularityFile, 'w') as f:
-            f.write(json.dumps(self.__userPopularity))
-        with open(self.__userMonthlyPopularityFile, 'w') as f:
-            f.write(json.dumps(self.__userMonthlyPopularity))
-    
-    def __printResults(self):
-        print('  Number of posts: {}'.format(self.__generalPopularity['count']))
-        print('  Number of users: {}'.format(len(self.__userPopularity)))
+        calculatedCount = 0
+        for user in userDates.keys():
+            for year, month in userDates[user].keys():
+                monthCount = userDates[user][(year, month)]
+                for topic in range(self.__model.k):
+                    # Print elapsed metric
+                    calculatedCount += 1
+                    print('  Calculated metrics:', calculatedCount, end='\r')
+
+                    # Define redis keys
+                    countKey = 'count'+user+str(topic)+year+month
+                    weightSumKey = 'weight'+user+str(topic)+year+month
+
+                    # Check if keys exist
+                    if not countKey in popularityCalculation.keys() and not weightSumKey in popularityCalculation.keys():
+                        continue
+
+                    # Get computed values
+                    count = popularityCalculation[countKey]
+                    weightSum = popularityCalculation[weightSumKey]
+
+                    # Compute populatities
+                    absolutePopularity = count
+                    relativePopularity = weightSum / monthCount
+
+                    # Insert popularity to database
+                    self.__appendToCSV(self.__userPopularityFile, topic, int(user), year, month, absolutePopularity, relativePopularity)
     
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         
         self.__model = tp.LDAModel.load(self.__modelFile)
-        self.__printTopics()
+        self.__findLabels()
 
-        self.__coherenceChart()
-        self.__perplexityChart()
+        self.__createCoherenceChart()
+        self.__createPerplexityChart()
         
-        self.__computeMetrics()
-        self.__saveMetrics()
-        self.__printResults()
+        self.__computeUserPopularity()

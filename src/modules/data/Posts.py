@@ -18,8 +18,8 @@ class Posts(object):
         for (content, user, date) in zip(self.contents, self.users, self.dates):
             yield {
                 'content': content,
-                'user': user,
-                'date': date,
+                'user': user.replace('\n', ''),
+                'date': date.replace('\n', ''),
             }
     
     def __len__(self):
