@@ -28,7 +28,7 @@ class PostProcessing(BaseStep):
         self.__posts = Posts(preProcessed=True, memory=False, splitted=True)
 
         self.__topicsFile = 'results/topics.csv'
-        self.__topicsFields = ['topic', 'words', 'labels']
+        self.__topicsFields = ['topic', 'label', 'words']
 
         self.__generalPopularityFile = 'results/general-popularity.csv'
         self.__userPopularityFile = 'results/user-popularity.csv'
@@ -45,26 +45,21 @@ class PostProcessing(BaseStep):
             writer.writerow(data)
 
     def __findLabels(self):
-        print('  Extracting topics and labels')
+        print('  Extracting topics')
 
         # Create CSV
         self.__createCSV(self.__topicsFile, self.__topicsFields)
 
-        # Extract candidates for auto topic labeling
-        extractor = tp.label.PMIExtractor(min_cf=10, min_df=5, max_len=5, max_cand=10000)
-        cands = extractor.extract(self.__model)
-
-        # Rank the candidates of labels for a specific topic
-        labeler = tp.label.FoRelevance(self.__model, cands, min_df=5, smoothing=1e-2, mu=0.25)
         for topic in range(self.__model.k):
             self.__appendToCSV(
                 self.__topicsFile,
                 {
                     'topic': topic,
+                    'label': 'unknown',
                     'words': ', '.join([ t[0] for t in self.__model.get_topic_words(topic) ]),
-                    'labels': ', '.join(label for label, score in labeler.get_topic_labels(topic, top_n=5))
                 }
             )
+        
     
     def __createCoherenceChart(self):
         fig = plt.figure()
@@ -122,20 +117,23 @@ class PostProcessing(BaseStep):
         plt.savefig('results/Perplexity-Chart.png')
         plt.clf()
     
-    def __getTopics(self, topic_distribution, threshold=0.1):
-        topics = list(zip(range(len(topic_distribution)), topic_distribution))
-        topics.sort(key=lambda value: value[1])
+    def __normalizeTopics(self, topics):
+        normalizer = 1 / float( sum([ weight for _, weight in topics ]) )
+        return [ (topic, weight*normalizer) for topic, weight in topics ]
+    
+    def __getTopics(self, topicDistribution, threshold=0.1):
+        # Map topics
+        topics = list(zip(range(len(topicDistribution)), topicDistribution))
+        topics.sort(key=lambda value: value[1], reverse=True)
+
+        # Check if all topics are below the threshold
+        if topics[0][1] < threshold:
+            self.__countEmpty += 1
+            return self.__normalizeTopics([ (topic, weight) for topic, weight in topics if weight == topics[0][1] ])
 
         # Remove topics below threshold and normalize
-        for i in range(len(topics)-1, -1, -1):
-            topic, weight = topics[i]
-            if weight < threshold:
-                del topics[i]
-                normalizer = 1 / float( sum([ weight for _, weight in topics ]) )
-                topics = [ (topic, weight*normalizer) for topic, weight in topics ]
-            else:
-                return topics
-
+        return self.__normalizeTopics([ (topic, weight) for topic, weight in topics if weight < threshold ])
+        
     def __computeUserPopularity(self):
         print('  Computing user popularity')
 
@@ -188,12 +186,12 @@ class PostProcessing(BaseStep):
                         popularityCalculation[weightSumKey] = weight
                     else:
                         popularityCalculation[weightSumKey] += weight
-
-        # Create CSV
-        self.__createCSV(self.__userPopularityFile, self.__popularityFields)
-        print()
+        # Print some results
+        print('\n    Number of users:', len(userDates.keys()))
+        print('    Number of posts with empty topics:', self.__countEmpty)
 
         # Finishing relative popularity calculation
+        self.__createCSV(self.__userPopularityFile, self.__popularityFields)
         calculatedCount = 0
         for user in userDates.keys():
             for year, month in userDates[user].keys():
@@ -236,6 +234,7 @@ class PostProcessing(BaseStep):
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
+        self.__countEmpty = 0
         
         self.__model = tp.LDAModel.load(self.__modelFile)
         self.__findLabels()
