@@ -44,7 +44,7 @@ class PostProcessing(BaseStep):
             writer = csv.DictWriter(csvFile, fieldnames=data.keys())
             writer.writerow(data)
 
-    def __findLabels(self):
+    def __extractTopics(self):
         print('  Extracting topics')
 
         # Create CSV
@@ -56,7 +56,7 @@ class PostProcessing(BaseStep):
                 {
                     'topic': topic,
                     'label': 'unknown',
-                    'words': ', '.join([ t[0] for t in self.__model.get_topic_words(topic) ]),
+                    'words': ' '.join([ t[0] for t in self.__model.get_topic_words(topic) ]),
                 }
             )
         
@@ -133,13 +133,15 @@ class PostProcessing(BaseStep):
 
         # Remove topics below threshold and normalize
         return self.__normalizeTopics([ (topic, weight) for topic, weight in topics if weight < threshold ])
-        
+
+    def __initCalculator(self):
+        return {'count': 0, 'topicCount': [0]*self.__model.k, 'topicWeightSum': [0]*self.__model.k}
+    
     def __computeUserPopularity(self):
         print('  Computing user popularity')
 
         numPosts = len(self.__model.docs)
-        userDates = {}
-        popularityCalculation = {}
+        calculation = {}
         index = -1
 
         for post in self.__posts:
@@ -157,13 +159,14 @@ class PostProcessing(BaseStep):
                 date = post['date'].split('-')
                 year, month  = (date[0], date[1])
 
-                # Update user dates
-                if not user in userDates.keys():
-                    userDates[user] = {(year, month): 1}
-                elif not (year, month) in userDates[user].keys():
-                    userDates[user][(year, month)] = 1
-                else:
-                    userDates[user][(year, month)] += 1
+                # Adjust dict of users and dates
+                if not user in calculation.keys():
+                    calculation[user] = {(year, month): self.__initCalculator()}
+                elif not (year, month) in calculation[user].keys():
+                    calculation[user][(year, month)] = self.__initCalculator()
+                
+                # Increment posts counter
+                calculation[user][(year, month)]['count'] += 1
                 
                 # Get post topics
                 content = self.__model.docs[index]
@@ -171,47 +174,34 @@ class PostProcessing(BaseStep):
 
                 # Count and sum weight for each topic
                 for topic, weight in topics:
-                    # Define redis keys
-                    countKey = 'count'+user+str(topic)+year+month
-                    weightSumKey = 'weight'+user+str(topic)+year+month
-
-                    # Update post counting for this topic
-                    if not countKey in popularityCalculation.keys():
-                        popularityCalculation[countKey] = 1
-                    else:
-                        popularityCalculation[countKey] += 1
+                    # Increment post counting for this topic
+                    calculation[user][(year, month)]['topicCount'][topic] += 1
                     
                     # Update post weight summation for this topic
-                    if not weightSumKey in popularityCalculation.keys():
-                        popularityCalculation[weightSumKey] = weight
-                    else:
-                        popularityCalculation[weightSumKey] += weight
+                    calculation[user][(year, month)]['topicWeightSum'][topic] += weight
+        
         # Print some results
-        print('\n    Number of users:', len(userDates.keys()))
+        print('\n    Number of users:', len(calculation.keys()))
         print('    Number of posts with empty topics:', self.__countEmpty)
 
         # Finishing relative popularity calculation
         self.__createCSV(self.__userPopularityFile, self.__popularityFields)
         calculatedCount = 0
-        for user in userDates.keys():
-            for year, month in userDates[user].keys():
-                monthCount = userDates[user][(year, month)]
+        for user in calculation.keys():
+            for year, month in calculation[user].keys():
+                monthCount = calculation[user][(year, month)]['count']
                 for topic in range(self.__model.k):
                     # Print elapsed metric
                     calculatedCount += 1
                     print('    Computed metrics:', calculatedCount, end='\r')
 
-                    # Define redis keys
-                    countKey = 'count'+user+str(topic)+year+month
-                    weightSumKey = 'weight'+user+str(topic)+year+month
-
                     # Check if keys exist
-                    if not countKey in popularityCalculation.keys() and not weightSumKey in popularityCalculation.keys():
+                    if calculation[user][(year, month)]['topicCount'][topic] == 0:
                         continue
 
                     # Get computed values
-                    count = popularityCalculation[countKey]
-                    weightSum = popularityCalculation[weightSumKey]
+                    count = calculation[user][(year, month)]['topicCount'][topic]
+                    weightSum = calculation[user][(year, month)]['topicWeightSum'][topic]
 
                     # Compute populatities
                     absolutePopularity = count
@@ -237,7 +227,7 @@ class PostProcessing(BaseStep):
         self.__countEmpty = 0
         
         self.__model = tp.LDAModel.load(self.__modelFile)
-        self.__findLabels()
+        self.__extractTopics()
 
         self.__createCoherenceChart()
         self.__createPerplexityChart()
