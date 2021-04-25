@@ -225,7 +225,7 @@ class PostProcessing(BaseStep):
         print()
     
     def __computeGeneralPopularity(self):
-        print('  Computing user popularity')
+        print('  Computing general popularity')
 
         self.__countEmpty = 0
         numPosts = len(self.__model.docs)
