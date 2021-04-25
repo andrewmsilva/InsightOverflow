@@ -31,8 +31,10 @@ class PostProcessing(BaseStep):
         self.__topicsFields = ['topic', 'label', 'words']
 
         self.__generalPopularityFile = 'results/general-popularity.csv'
+        self.__generalPopularityFields = ['topic', 'year', 'month', 'absolutePopularity', 'relativePopularity']
+
         self.__userPopularityFile = 'results/user-popularity.csv'
-        self.__popularityFields = ['user', 'topic', 'year', 'month', 'absolutePopularity', 'relativePopularity']
+        self.__userPopularityFields = ['user', 'topic', 'year', 'month', 'absolutePopularity', 'relativePopularity']
     
     def __createCSV(self, csvName, fields):
         with open(csvName, 'w', newline='') as csvFile:
@@ -140,6 +142,7 @@ class PostProcessing(BaseStep):
     def __computeUserPopularity(self):
         print('  Computing user popularity')
 
+        self.__countEmpty = 0
         numPosts = len(self.__model.docs)
         calculation = {}
         index = -1
@@ -185,7 +188,7 @@ class PostProcessing(BaseStep):
         print('    Number of posts with empty topics:', self.__countEmpty)
 
         # Finishing relative popularity calculation
-        self.__createCSV(self.__userPopularityFile, self.__popularityFields)
+        self.__createCSV(self.__userPopularityFile, self.__userPopularityFields)
         calculatedCount = 0
         for user in calculation.keys():
             for year, month in calculation[user].keys():
@@ -221,6 +224,85 @@ class PostProcessing(BaseStep):
                     )
         print()
     
+    def __computeGeneralPopularity(self):
+        print('  Computing user popularity')
+
+        self.__countEmpty = 0
+        numPosts = len(self.__model.docs)
+        calculation = {}
+        index = -1
+
+        for post in self.__posts:
+            # Stop when reach the last post in the model
+            if index+1 == numPosts:
+                break
+            # Compute the metrics if content is not empty
+            elif len(post['content']) > 0:
+                index += 1
+                print('    Posts covered:', index+1, end='\r')
+
+                # Get data
+                content = post['content']
+                date = post['date'].split('-')
+                year, month  = (date[0], date[1])
+
+                # Adjust dict of dates
+                if not (year, month) in calculation[user].keys():
+                    calculation[(year, month)] = self.__initCalculator()
+                
+                # Increment posts counter
+                calculation[(year, month)]['count'] += 1
+                
+                # Get post topics
+                content = self.__model.docs[index]
+                topics = self.__getTopics(content.get_topic_dist())
+
+                # Count and sum weight for each topic
+                for topic, weight in topics:
+                    # Increment post counting for this topic
+                    calculation[(year, month)]['topicCount'][topic] += 1
+                    
+                    # Update post weight summation for this topic
+                    calculation[(year, month)]['topicWeightSum'][topic] += weight
+        
+        # Print some results
+        print('\n    Number of posts with empty topics:', self.__countEmpty)
+
+        # Finishing relative popularity calculation
+        self.__createCSV(self.__generalPopularityFile, self.__generalPopularityFields)
+        calculatedCount = 0
+        for year, month in calculation.keys():
+            monthCount = calculation[(year, month)]['count']
+            for topic in range(self.__model.k):
+                # Print elapsed metric
+                calculatedCount += 1
+                print('    Computed metrics:', calculatedCount, end='\r')
+
+                # Check if keys exist
+                if calculation[(year, month)]['topicCount'][topic] == 0:
+                    continue
+
+                # Get computed values
+                count = calculation[(year, month)]['topicCount'][topic]
+                weightSum = calculation[(year, month)]['topicWeightSum'][topic]
+
+                # Compute populatities
+                absolutePopularity = count
+                relativePopularity = weightSum / monthCount
+
+                # Insert popularity to database
+                self.__appendToCSV(
+                    self.__generalPopularityFile,
+                    {
+                        'topic': topic,
+                        'year': year,
+                        'month': month,
+                        'absolutePopularity': absolutePopularity,
+                        'relativePopularity': relativePopularity,
+                    }
+                )
+        print()
+    
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
@@ -232,4 +314,5 @@ class PostProcessing(BaseStep):
         self.__createCoherenceChart()
         self.__createPerplexityChart()
         
-        self.__computeUserPopularity()
+        # self.__computeUserPopularity()
+        self.__computeGeneralPopularity()
