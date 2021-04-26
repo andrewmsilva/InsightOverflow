@@ -247,7 +247,7 @@ class PostProcessing(BaseStep):
                 year, month  = (date[0], date[1])
 
                 # Adjust dict of dates
-                if not (year, month) in calculation[user].keys():
+                if not (year, month) in calculation.keys():
                     calculation[(year, month)] = self.__initCalculator()
                 
                 # Increment posts counter
