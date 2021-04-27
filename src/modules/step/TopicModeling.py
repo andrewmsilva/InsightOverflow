@@ -14,7 +14,7 @@ class TopicModeling(BaseStep):
     def __init__(self):
         super().__init__('Topic modeling')
 
-        self.__posts = Posts(preProcessed=True, memory=False, slitted=True)
+        self.__posts = Posts(preProcessed=True, memory=False, splitted=True)
 
         self.__modelFile = 'results/model.bin'
         self.__experimentsFile = 'results/experiments.csv'
