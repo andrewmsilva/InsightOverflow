@@ -32,9 +32,11 @@ class PostProcessing(BaseStep):
 
         self.__generalPopularityFile = 'results/general-popularity.csv'
         self.__generalPopularityFields = ['topic', 'year', 'month', 'absolutePopularity', 'relativePopularity']
+        self.__generalPopularityDf = None
 
         self.__userPopularityFile = 'results/user-popularity.csv'
         self.__userPopularityFields = ['user', 'topic', 'year', 'month', 'absolutePopularity', 'relativePopularity']
+        self.__userPopularityDf = None
     
     def __createCSV(self, csvName, fields):
         with open(csvName, 'w', newline='') as csvFile:
@@ -61,9 +63,10 @@ class PostProcessing(BaseStep):
                     'words': ' '.join([ t[0] for t in self.__model.get_topic_words(topic) ]),
                 }
             )
-        
     
     def __createCoherenceChart(self):
+        print('  Creating coherence chart')
+
         fig = plt.figure()
         ax = fig.gca(projection='3d')
 
@@ -78,11 +81,10 @@ class PostProcessing(BaseStep):
 
         surface = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0)
 
-        ax.text(X_max, Y_max, Z_max, 'V', fontsize=12)
         ax.zaxis.set_major_locator(LinearLocator(10))
         ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
 
-        ax.set_title('Best experiment: iterations={} topics={} coherence={:.4f}'.format(Y_max, X_max, Z_max), pad=25)
+        ax.set_title('Best experiment: iterations={} topics={} coherence={:.4f}'.format(Y_max, X_max, Z_max), pad=50)
         ax.set_xlabel('Topics')
         ax.set_ylabel('Iterations')
         ax.set_zlabel('Coherence')
@@ -92,6 +94,8 @@ class PostProcessing(BaseStep):
         plt.clf()
     
     def __createPerplexityChart(self):
+        print('  Creating perplexity chart')
+
         fig = plt.figure()
         ax = fig.gca(projection='3d')
 
@@ -106,12 +110,11 @@ class PostProcessing(BaseStep):
 
         surface = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0)
 
-        ax.text(X_max, Y_max, Z_max, 'V', fontsize=8)
         ax.zaxis.set_major_locator(LinearLocator(10))
         ax.zaxis.set_major_formatter(FormatStrFormatter('%.0f'))
         fig.colorbar(surface, shrink=0.5, aspect=5)
 
-        ax.set_title('Best experiment: iterations={} topics={} perplexity={:.0f}'.format(X_max, Y_max, Z_max), pad=20)
+        ax.set_title('Best experiment: iterations={} topics={} perplexity={:.0f}'.format(X_max, Y_max, Z_max), pad=50)
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Topics')
         ax.set_zlabel('Perplexity')
@@ -303,8 +306,14 @@ class PostProcessing(BaseStep):
                 )
         print()
     
+    def __generateUserPopularityCharts(self):
+        self.__userPopularityDf = pd.read_csv(self.__userPopularityFile)
+        print(self.__userPopularityDf.describe())
+    
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
+        self.__experiments = self.__experiments.astype({'num_topics': 'int32', 'iterations': 'int32', 'perplexity': 'float32', 'coherence': 'float32'})
+        
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         self.__countEmpty = 0
         
@@ -315,4 +324,6 @@ class PostProcessing(BaseStep):
         self.__createPerplexityChart()
         
         # self.__computeUserPopularity()
-        self.__computeGeneralPopularity()
+        self.__generateUserPopularityCharts()
+
+        # self.__computeGeneralPopularity()
