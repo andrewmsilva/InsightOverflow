@@ -6,9 +6,6 @@ import tomotopy as tp
 from multiprocessing import Process
 import gc
 
-def split(string):
-    return string.split()
-
 class TopicModeling(BaseStep):
     
     def __init__(self):
