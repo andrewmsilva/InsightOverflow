@@ -5,6 +5,7 @@ import tomotopy as tp
 import pandas as pd
 import json
 import csv
+import random
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -306,9 +307,103 @@ class PostProcessing(BaseStep):
                 )
         print()
     
-    def __generateUserPopularityCharts(self):
-        self.__userPopularityDf = pd.read_csv(self.__userPopularityFile)
-        print(self.__userPopularityDf.describe())
+    def __createUserPopularityCharts(self):
+        print('  Creating user popularity charts')
+        
+        originalDf = pd.read_csv(self.__userPopularityFile, header=0)
+        originalDf = originalDf.astype({'year': 'int32', 'month': 'int32'})
+
+        random.seed(10)
+        for user in random.sample(list(originalDf.user.unique()), 3,):
+            df = originalDf.loc[originalDf.user == user]
+
+            df['date'] = df.apply(lambda row: f'{int(row.year)}/{int(row.month)}', axis=1)
+            X = df.date.unique()
+
+            Y = [[None]*len(X)]*self.__model.k
+            for topic in range(self.__model.k):
+                for i in range(len(X)):
+                    date = X[i].split('/')
+                    year = int(date[0])
+                    month = int(date[1])
+
+                    rows = df.loc[(df.year == year) & (df.month == month) & (df.topic == topic)]
+                    
+                    if len(rows) == 0:
+                        Y[topic][i] = 0
+                    else:
+                        Y[topic][i] = rows.iloc[-1].relativePopularity
+                        
+            plt.stackplot(X, Y, labels=range(self.__model.k))
+            plt.legend(loc='upper left')
+            plt.savefig(f'results/User-{user}-Relative-Popularity-Chart.png')
+            plt.clf()
+
+            Y = [[None]*len(X)]*self.__model.k
+            for topic in range(self.__model.k):
+                for i in range(len(X)):
+                    date = X[i].split('/')
+                    year = int(date[0])
+                    month = int(date[1])
+
+                    rows = df.loc[(df.year == year) & (df.month == month) & (df.topic == topic)]
+                    
+                    if len(rows) == 0:
+                        Y[topic][i] = 0
+                    else:
+                        Y[topic][i] = rows.iloc[-1].absolutePopularity
+            
+            plt.stackplot(X, Y, labels=range(self.__model.k))
+            plt.legend(loc='upper left')
+            plt.savefig(f'results/User-{user}-Absolute-Popularity-Chart.png')
+            plt.clf()
+
+    def __createGeneralPopularityCharts(self):
+        print('  Creating general popularity charts')
+
+        df = pd.read_csv(self.__generalPopularityFile, header=0)
+        df = df.astype({'year': 'int32', 'month': 'int32'})
+
+        df['date'] = df.apply(lambda row: f'{int(row.year)}/{int(row.month)}', axis=1)
+        X = df.date.unique()
+
+        Y = [[None]*len(X)]*self.__model.k
+        for topic in range(self.__model.k):
+            for i in range(len(X)):
+                date = X[i].split('/')
+                year = int(date[0])
+                month = int(date[1])
+
+                rows = df.loc[(df.year == year) & (df.month == month) & (df.topic == topic)]
+                
+                if len(rows) == 0:
+                    Y[topic][i] = 0
+                else:
+                    Y[topic][i] = rows.iloc[-1].relativePopularity
+        
+        plt.stackplot(X, Y, labels=range(self.__model.k))
+        plt.legend(loc='upper left')
+        plt.savefig('results/General-Relative-Popularity-Chart.png')
+        plt.clf()
+
+        Y = [[None]*len(X)]*self.__model.k
+        for topic in range(self.__model.k):
+            for i in range(len(X)):
+                date = X[i].split('/')
+                year = int(date[0])
+                month = int(date[1])
+
+                rows = df.loc[(df.year == year) & (df.month == month) & (df.topic == topic)]
+                
+                if len(rows) == 0:
+                    Y[topic][i] = 0
+                else:
+                    Y[topic][i] = rows.iloc[-1].absolutePopularity
+        
+        plt.stackplot(X, Y, labels=range(self.__model.k))
+        plt.legend(loc='upper left')
+        plt.savefig('results/General-Absolute-Popularity-Chart.png')
+        plt.clf()
     
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
@@ -323,7 +418,8 @@ class PostProcessing(BaseStep):
         self.__createCoherenceChart()
         self.__createPerplexityChart()
         
-        # self.__computeUserPopularity()
-        self.__generateUserPopularityCharts()
+        self.__computeUserPopularity()
+        self.__createUserPopularityCharts()
 
-        # self.__computeGeneralPopularity()
+        self.__computeGeneralPopularity()
+        self.__createGeneralPopularityCharts()
