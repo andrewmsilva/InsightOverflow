@@ -320,8 +320,8 @@ class PostProcessing(BaseStep):
             df['date'] = df.apply(lambda row: f'{int(row.year)}/{int(row.month)}', axis=1)
             X = df.date.unique()
 
-            Y = [[None]*len(X)]*self.__model.k
-            for topic in range(self.__model.k):
+            Y = [[None]*len(X)]*int(self.__experiment.num_topics)
+            for topic in range(len(Y)):
                 for i in range(len(X)):
                     date = X[i].split('/')
                     year = int(date[0])
@@ -334,13 +334,12 @@ class PostProcessing(BaseStep):
                     else:
                         Y[topic][i] = rows.iloc[-1].relativePopularity
                         
-            plt.stackplot(X, Y, labels=range(self.__model.k))
+            plt.stackplot(X, Y, labels=range(len(Y)))
             plt.legend(loc='upper left')
             plt.savefig(f'results/User-{user}-Relative-Popularity-Chart.png')
             plt.clf()
 
-            Y = [[None]*len(X)]*self.__model.k
-            for topic in range(self.__model.k):
+            for topic in range(len(Y)):
                 for i in range(len(X)):
                     date = X[i].split('/')
                     year = int(date[0])
@@ -353,7 +352,7 @@ class PostProcessing(BaseStep):
                     else:
                         Y[topic][i] = rows.iloc[-1].absolutePopularity
             
-            plt.stackplot(X, Y, labels=range(self.__model.k))
+            plt.stackplot(X, Y, labels=range(len(Y)))
             plt.legend(loc='upper left')
             plt.savefig(f'results/User-{user}-Absolute-Popularity-Chart.png')
             plt.clf()
@@ -367,8 +366,8 @@ class PostProcessing(BaseStep):
         df['date'] = df.apply(lambda row: f'{int(row.year)}/{int(row.month)}', axis=1)
         X = df.date.unique()
 
-        Y = [[None]*len(X)]*self.__model.k
-        for topic in range(self.__model.k):
+        Y = [[None]*len(X)]*int(self.__experiment.num_topics)
+        for topic in range(len(Y)):
             for i in range(len(X)):
                 date = X[i].split('/')
                 year = int(date[0])
@@ -381,13 +380,12 @@ class PostProcessing(BaseStep):
                 else:
                     Y[topic][i] = rows.iloc[-1].relativePopularity
         
-        plt.stackplot(X, Y, labels=range(self.__model.k))
+        plt.stackplot(X, Y, labels=range(len(Y)))
         plt.legend(loc='upper left')
         plt.savefig('results/General-Relative-Popularity-Chart.png')
         plt.clf()
 
-        Y = [[None]*len(X)]*self.__model.k
-        for topic in range(self.__model.k):
+        for topic in range(len(Y)):
             for i in range(len(X)):
                 date = X[i].split('/')
                 year = int(date[0])
@@ -400,7 +398,7 @@ class PostProcessing(BaseStep):
                 else:
                     Y[topic][i] = rows.iloc[-1].absolutePopularity
         
-        plt.stackplot(X, Y, labels=range(self.__model.k))
+        plt.stackplot(X, Y, labels=range(len(Y)))
         plt.legend(loc='upper left')
         plt.savefig('results/General-Absolute-Popularity-Chart.png')
         plt.clf()
