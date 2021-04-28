@@ -410,14 +410,14 @@ class PostProcessing(BaseStep):
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         self.__countEmpty = 0
         
-        self.__model = tp.LDAModel.load(self.__modelFile)
-        self.__extractTopics()
+        # self.__model = tp.LDAModel.load(self.__modelFile)
+        # self.__extractTopics()
 
         self.__createCoherenceChart()
         self.__createPerplexityChart()
         
-        self.__computeUserPopularity()
+        # self.__computeUserPopularity()
         self.__createUserPopularityCharts()
 
-        self.__computeGeneralPopularity()
+        # self.__computeGeneralPopularity()
         self.__createGeneralPopularityCharts()
