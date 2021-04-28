@@ -415,9 +415,9 @@ class PostProcessing(BaseStep):
 
         self.__createCoherenceChart()
         self.__createPerplexityChart()
-        
-        # self.__computeUserPopularity()
-        self.__createUserPopularityCharts()
 
         # self.__computeGeneralPopularity()
         self.__createGeneralPopularityCharts()
+        
+        # self.__computeUserPopularity()
+        self.__createUserPopularityCharts()
