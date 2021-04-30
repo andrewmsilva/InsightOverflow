@@ -11,6 +11,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
+import seaborn as sns
+
+sns.set_style('whitegrid')
+palette = plt.get_cmap('Set1')
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -32,11 +36,11 @@ class PostProcessing(BaseStep):
         self.__topicsFields = ['topic', 'label', 'words']
 
         self.__generalPopularityFile = 'results/general-popularity.csv'
-        self.__generalPopularityFields = ['topic', 'year', 'month', 'absolutePopularity', 'relativePopularity']
+        self.__generalPopularityFields = ['topic', 'date', 'absolutePopularity', 'relativePopularity']
         self.__generalPopularityDf = None
 
         self.__userPopularityFile = 'results/user-popularity.csv'
-        self.__userPopularityFields = ['user', 'topic', 'year', 'month', 'absolutePopularity', 'relativePopularity']
+        self.__userPopularityFields = ['user', 'topic', 'date', 'absolutePopularity', 'relativePopularity']
         self.__userPopularityDf = None
     
     def __createCSV(self, csvName, fields):
@@ -138,7 +142,7 @@ class PostProcessing(BaseStep):
             return self.__normalizeTopics([ (topic, weight) for topic, weight in topics if weight == topics[0][1] ])
 
         # Remove topics below threshold and normalize
-        return self.__normalizeTopics([ (topic, weight) for topic, weight in topics if weight < threshold ])
+        return self.__normalizeTopics([ (topic, weight) for topic, weight in topics if weight >= threshold ])
 
     def __initCalculator(self):
         return {'count': 0, 'topicCount': [0]*self.__model.k, 'topicWeightSum': [0]*self.__model.k}
@@ -163,17 +167,16 @@ class PostProcessing(BaseStep):
                 # Get data
                 content = post['content']
                 user = post['user']
-                date = post['date'].split('-')
-                year, month  = (date[0], date[1])
+                date = post['date'][:7]
 
                 # Adjust dict of users and dates
                 if not user in calculation.keys():
-                    calculation[user] = {(year, month): self.__initCalculator()}
-                elif not (year, month) in calculation[user].keys():
-                    calculation[user][(year, month)] = self.__initCalculator()
+                    calculation[user] = {date: self.__initCalculator()}
+                elif not date in calculation[user].keys():
+                    calculation[user][date] = self.__initCalculator()
                 
                 # Increment posts counter
-                calculation[user][(year, month)]['count'] += 1
+                calculation[user][date]['count'] += 1
                 
                 # Get post topics
                 content = self.__model.docs[index]
@@ -182,10 +185,10 @@ class PostProcessing(BaseStep):
                 # Count and sum weight for each topic
                 for topic, weight in topics:
                     # Increment post counting for this topic
-                    calculation[user][(year, month)]['topicCount'][topic] += 1
+                    calculation[user][date]['topicCount'][topic] += 1
                     
                     # Update post weight summation for this topic
-                    calculation[user][(year, month)]['topicWeightSum'][topic] += weight
+                    calculation[user][date]['topicWeightSum'][topic] += weight
         
         # Print some results
         print('\n    Number of users:', len(calculation.keys()))
@@ -195,24 +198,19 @@ class PostProcessing(BaseStep):
         self.__createCSV(self.__userPopularityFile, self.__userPopularityFields)
         calculatedCount = 0
         for user in calculation.keys():
-            for year, month in calculation[user].keys():
-                monthCount = calculation[user][(year, month)]['count']
+            for date in calculation[user].keys():
                 for topic in range(self.__model.k):
                     # Print elapsed metric
                     calculatedCount += 1
                     print('    Computed metrics:', calculatedCount, end='\r')
 
                     # Check if keys exist
-                    if calculation[user][(year, month)]['topicCount'][topic] == 0:
+                    if calculation[user][date]['topicCount'][topic] == 0:
                         continue
 
-                    # Get computed values
-                    count = calculation[user][(year, month)]['topicCount'][topic]
-                    weightSum = calculation[user][(year, month)]['topicWeightSum'][topic]
-
                     # Compute populatities
-                    absolutePopularity = count
-                    relativePopularity = weightSum / monthCount
+                    absolutePopularity = calculation[user][date]['topicCount'][topic]
+                    relativePopularity = calculation[user][date]['topicWeightSum'][topic] / calculation[user][date]['count']
 
                     # Insert popularity to database
                     self.__appendToCSV(
@@ -220,8 +218,7 @@ class PostProcessing(BaseStep):
                         {
                             'user': user,
                             'topic': topic,
-                            'year': year,
-                            'month': month,
+                            'date': date,
                             'absolutePopularity': absolutePopularity,
                             'relativePopularity': relativePopularity,
                         }
@@ -247,15 +244,14 @@ class PostProcessing(BaseStep):
 
                 # Get data
                 content = post['content']
-                date = post['date'].split('-')
-                year, month  = (date[0], date[1])
+                date = post['date'][:7]
 
                 # Adjust dict of dates
-                if not (year, month) in calculation.keys():
-                    calculation[(year, month)] = self.__initCalculator()
+                if not date in calculation.keys():
+                    calculation[date] = self.__initCalculator()
                 
                 # Increment posts counter
-                calculation[(year, month)]['count'] += 1
+                calculation[date]['count'] += 1
                 
                 # Get post topics
                 content = self.__model.docs[index]
@@ -264,10 +260,10 @@ class PostProcessing(BaseStep):
                 # Count and sum weight for each topic
                 for topic, weight in topics:
                     # Increment post counting for this topic
-                    calculation[(year, month)]['topicCount'][topic] += 1
+                    calculation[date]['topicCount'][topic] += 1
                     
                     # Update post weight summation for this topic
-                    calculation[(year, month)]['topicWeightSum'][topic] += weight
+                    calculation[date]['topicWeightSum'][topic] += weight
         
         # Print some results
         print('\n    Number of posts with empty topics:', self.__countEmpty)
@@ -275,32 +271,26 @@ class PostProcessing(BaseStep):
         # Finishing relative popularity calculation
         self.__createCSV(self.__generalPopularityFile, self.__generalPopularityFields)
         calculatedCount = 0
-        for year, month in calculation.keys():
-            monthCount = calculation[(year, month)]['count']
+        for date in calculation.keys():
             for topic in range(self.__model.k):
                 # Print elapsed metric
                 calculatedCount += 1
                 print('    Computed metrics:', calculatedCount, end='\r')
 
                 # Check if keys exist
-                if calculation[(year, month)]['topicCount'][topic] == 0:
+                if calculation[date]['topicCount'][topic] == 0:
                     continue
 
-                # Get computed values
-                count = calculation[(year, month)]['topicCount'][topic]
-                weightSum = calculation[(year, month)]['topicWeightSum'][topic]
-
                 # Compute populatities
-                absolutePopularity = count
-                relativePopularity = weightSum / monthCount
+                absolutePopularity = calculation[date]['topicCount'][topic]
+                relativePopularity = calculation[date]['topicWeightSum'][topic] / calculation[date]['count']
 
                 # Insert popularity to database
                 self.__appendToCSV(
                     self.__generalPopularityFile,
                     {
                         'topic': topic,
-                        'year': year,
-                        'month': month,
+                        'date': date,
                         'absolutePopularity': absolutePopularity,
                         'relativePopularity': relativePopularity,
                     }
@@ -311,49 +301,70 @@ class PostProcessing(BaseStep):
         print('  Creating user popularity charts')
         
         originalDf = pd.read_csv(self.__userPopularityFile, header=0)
-        originalDf = originalDf.astype({'year': 'int32', 'month': 'int32'})
 
         random.seed(10)
         for user in random.sample(list(originalDf.user.unique()), 3,):
             df = originalDf.loc[originalDf.user == user]
 
-            df['date'] = df.apply(lambda row: f'{int(row.year)}/{int(row.month)}', axis=1)
             X = df.date.unique()
+            xticks = []
+            count = 0
+            for date in X:
+                if count == 6:
+                    count = 0
+                count += 1
+                if count == 1:
+                    xticks.append(date)
+                else:
+                    xticks.append('')
+            
+            plt.figure(figsize=(10,6))
 
-            Y = [[None]*len(X)]*int(self.__experiment.num_topics)
-            for topic in range(len(Y)):
+            for topic in range(int(self.__experiment.num_topics)):
+                Y = []
                 for i in range(len(X)):
-                    date = X[i].split('/')
-                    year = int(date[0])
-                    month = int(date[1])
-
-                    rows = df.loc[(df.year == year) & (df.month == month) & (df.topic == topic)]
+                    date = X[i]
+                    rows = df.loc[(df.date == date) & (df.topic == topic)]
                     
                     if len(rows) == 0:
-                        Y[topic][i] = 0
+                        Y.append(0)
                     else:
-                        Y[topic][i] = rows.iloc[-1].relativePopularity
+                        Y.append(rows.iloc[-1].relativePopularity)
+                    
+                plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
+                
                         
-            plt.stackplot(X, Y, labels=range(len(Y)))
-            plt.legend(loc='upper left')
+            plt.title(f'User {user} Relative Popularity')
+            plt.xlabel("Month")
+            plt.ylabel("Relative Popularity")
+            plt.legend(ncol=3)
+            plt.xticks(xticks, rotation=45)
+            plt.tight_layout()
             plt.savefig(f'results/User-{user}-Relative-Popularity-Chart.png')
             plt.clf()
 
-            for topic in range(len(Y)):
-                for i in range(len(X)):
-                    date = X[i].split('/')
-                    year = int(date[0])
-                    month = int(date[1])
+            plt.figure(figsize=(10,6))
 
-                    rows = df.loc[(df.year == year) & (df.month == month) & (df.topic == topic)]
+            for topic in range(int(self.__experiment.num_topics)):
+                Y = []
+                for i in range(len(X)):
+                    date = X[i]
+                    rows = df.loc[(df.date == date) & (df.topic == topic)]
                     
                     if len(rows) == 0:
-                        Y[topic][i] = 0
+                        Y.append(0)
                     else:
-                        Y[topic][i] = rows.iloc[-1].absolutePopularity
+                        Y.append(rows.iloc[-1].absolutePopularity)
+
+                plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
+                
             
-            plt.stackplot(X, Y, labels=range(len(Y)))
-            plt.legend(loc='upper left')
+            plt.title(f'User {user} Absolute Popularity')
+            plt.xlabel("Month")
+            plt.ylabel("Absolute Popularity")
+            plt.legend(ncol=3)
+            plt.xticks(xticks, rotation=45)
+            plt.tight_layout()
             plt.savefig(f'results/User-{user}-Absolute-Popularity-Chart.png')
             plt.clf()
 
@@ -361,45 +372,64 @@ class PostProcessing(BaseStep):
         print('  Creating general popularity charts')
 
         df = pd.read_csv(self.__generalPopularityFile, header=0)
-        df = df.astype({'year': 'int32', 'month': 'int32'})
 
-        df['date'] = df.apply(lambda row: f'{int(row.year)}/{int(row.month)}', axis=1)
         X = df.date.unique()
+        xticks = []
+        count = 0
+        for date in X:
+            if count == 6:
+                count = 0
+            count += 1
+            if count == 1:
+                xticks.append(date)
+            else:
+                xticks.append('')
 
-        Y = [[None]*len(X)]*int(self.__experiment.num_topics)
-        for topic in range(len(Y)):
+        plt.figure(figsize=(10,6))
+
+        for topic in range(int(self.__experiment.num_topics)):
+            Y = []
             for i in range(len(X)):
-                date = X[i].split('/')
-                year = int(date[0])
-                month = int(date[1])
-
-                rows = df.loc[(df.year == year) & (df.month == month) & (df.topic == topic)]
+                date = X[i]
+                rows = df.loc[(df.date == date) & (df.topic == topic)]
                 
                 if len(rows) == 0:
-                    Y[topic][i] = 0
+                    Y.append(0)
                 else:
-                    Y[topic][i] = rows.iloc[-1].relativePopularity
-        
-        plt.stackplot(X, Y, labels=range(len(Y)))
-        plt.legend(loc='upper left')
+                    Y.append(rows.iloc[-1].relativePopularity)
+                
+            plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
+
+        plt.title('General Relative Popularity')
+        plt.xlabel("Month")
+        plt.ylabel("Relative Popularity")
+        plt.legend(ncol=3)
+        plt.xticks(xticks, rotation=45)
+        plt.tight_layout()
         plt.savefig('results/General-Relative-Popularity-Chart.png')
         plt.clf()
 
-        for topic in range(len(Y)):
-            for i in range(len(X)):
-                date = X[i].split('/')
-                year = int(date[0])
-                month = int(date[1])
+        plt.figure(figsize=(10,6))
 
-                rows = df.loc[(df.year == year) & (df.month == month) & (df.topic == topic)]
+        for topic in range(int(self.__experiment.num_topics)):
+            Y = []
+            for i in range(len(X)):
+                date = X[i]
+                rows = df.loc[(df.date == date) & (df.topic == topic)]
                 
                 if len(rows) == 0:
-                    Y[topic][i] = 0
+                    Y.append(0)
                 else:
-                    Y[topic][i] = rows.iloc[-1].absolutePopularity
+                    Y.append(rows.iloc[-1].absolutePopularity)
+            
+            plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
         
-        plt.stackplot(X, Y, labels=range(len(Y)))
-        plt.legend(loc='upper left')
+        plt.title('General Absolute Popularity')
+        plt.xlabel("Month")
+        plt.ylabel("Absolute Popularity")
+        plt.legend(ncol=3)
+        plt.xticks(xticks, rotation=45)
+        plt.tight_layout()
         plt.savefig('results/General-Absolute-Popularity-Chart.png')
         plt.clf()
     
@@ -410,14 +440,14 @@ class PostProcessing(BaseStep):
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         self.__countEmpty = 0
         
-        # self.__model = tp.LDAModel.load(self.__modelFile)
-        # self.__extractTopics()
+        self.__model = tp.LDAModel.load(self.__modelFile)
+        self.__extractTopics()
 
         self.__createCoherenceChart()
         self.__createPerplexityChart()
 
-        # self.__computeGeneralPopularity()
+        self.__computeGeneralPopularity()
         self.__createGeneralPopularityCharts()
         
-        # self.__computeUserPopularity()
+        self.__computeUserPopularity()
         self.__createUserPopularityCharts()
