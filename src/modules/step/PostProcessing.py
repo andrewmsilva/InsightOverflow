@@ -81,7 +81,7 @@ class PostProcessing(BaseStep):
         X_max = X[index]
         Y_max = Y[index]
 
-        fig = plt.figure(figsize=(10,6))
+        fig = plt.figure(figsize=(8,5))
         ax = fig.gca(projection='3d')
         surface = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0)
 
@@ -112,7 +112,7 @@ class PostProcessing(BaseStep):
         X_max = X[index]
         Y_max = Y[index]
 
-        fig = plt.figure(figsize=(10,6))
+        fig = plt.figure(figsize=(8,5))
         ax = fig.gca(projection='3d')
         surface = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0)
 
@@ -321,22 +321,28 @@ class PostProcessing(BaseStep):
         plt.title(title)
         plt.xlabel(xLabel)
         plt.ylabel(yLabel)
-        plt.legend(ncol=3)
+        plt.legend(bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0, ncol=2)
         plt.xticks(self.__getXTicks(X), rotation=45)
         plt.tight_layout()
         plt.savefig(path, dpi=300)
         plt.clf()
     
+    def __getUsersWithAtLeastOneYear(self, df):
+        users = df.user.unique()
+        return [ user for user in users if len(list(df.loc[df.user == user].date.unique())) >= 12 ]
+    
     def __createUserPopularityCharts(self):
         print('  Creating user popularity charts')
         
         originalDf = pd.read_csv(self.__userPopularityFile, header=0)
+        users = self.__getUsersWithAtLeastOneYear(originalDf)
+        print(f'    Users with at least one year of contribution: {len(users)}')
 
         random.seed(10)
-        for user in random.sample(list(originalDf.user.unique()), 3,):
+        for user in random.sample(users, 3):
             df = originalDf.loc[originalDf.user == user]
             X = df.date.unique()
-            plt.figure(figsize=(10,6))
+            plt.figure(figsize=(8,5))
 
             stackedY = []
             labelY = []
@@ -358,12 +364,12 @@ class PostProcessing(BaseStep):
             
             self.__saveChart(X, f'Relative topic popularity by month for user {user}', 'Month', 'Topic Popularity', f'results/User-{user}-Relative-Popularity-Line-Chart.png')
 
-            plt.figure(figsize=(10,6))
+            plt.figure(figsize=(8,5))
             plt.stackplot(X, stackedY, labels=labelY)
             plt.margins(0,0)
             self.__saveChart(X, f'Relative topic popularity by month for user {user}', 'Month', 'Topic Popularity', f'results/User-{user}-Relative-Popularity-Stacked-Chart.png')
 
-            plt.figure(figsize=(10,6))
+            plt.figure(figsize=(8,5))
             stackedY = []
             labelY = []
             for topic in range(int(self.__experiment.num_topics)):
@@ -375,7 +381,7 @@ class PostProcessing(BaseStep):
                     if len(rows) == 0:
                         Y.append(0)
                     else:
-                        Y.append(rows.iloc[-1].absolutePopularity)
+                        Y.append(int(rows.iloc[-1].absolutePopularity))
 
                 if (any([ value for value in Y if value != 0 ])):
                     plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
@@ -384,7 +390,7 @@ class PostProcessing(BaseStep):
             
             self.__saveChart(X, f'Absolute topic popularity by month for user {user}', 'Month', 'Number of posts', f'results/User-{user}-Absolute-Popularity-Line-Chart.png')
 
-            plt.figure(figsize=(10,6))
+            plt.figure(figsize=(8,5))
             plt.stackplot(X, stackedY, labels=labelY)
             plt.margins(0,0)
             self.__saveChart(X, f'Absolute topic popularity by month for user {user}', 'Month', 'Number of posts', f'results/User-{user}-Absolute-Popularity-Stacked-Chart.png')
@@ -394,7 +400,7 @@ class PostProcessing(BaseStep):
 
         df = pd.read_csv(self.__generalPopularityFile, header=0)
         X = df.date.unique()
-        plt.figure(figsize=(10,6))
+        plt.figure(figsize=(8,5))
 
         stackedY = []
         labelY = []
@@ -416,12 +422,12 @@ class PostProcessing(BaseStep):
 
         self.__saveChart(X, 'Relative topic popularity by month in Stack Overflow', 'Month', 'Topic Popularity', 'results/General-Relative-Popularity-Line-Chart.png')
 
-        plt.figure(figsize=(10,6))
+        plt.figure(figsize=(8,5))
         plt.stackplot(X, stackedY, labels=labelY)
         plt.margins(0,0)
         self.__saveChart(X, 'Relative topic popularity by month in Stack Overflow', 'Month', 'Topic Popularity', 'results/General-Relative-Popularity-Stacked-Chart.png')
 
-        plt.figure(figsize=(10,6))
+        plt.figure(figsize=(8,5))
         stackedY = []
         labelY = []
         for topic in range(int(self.__experiment.num_topics)):
@@ -433,7 +439,7 @@ class PostProcessing(BaseStep):
                 if len(rows) == 0:
                     Y.append(0)
                 else:
-                    Y.append(rows.iloc[-1].absolutePopularity)
+                    Y.append(int(rows.iloc[-1].absolutePopularity))
             
             if (any([ value for value in Y if value != 0 ])):
                 plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
@@ -442,7 +448,7 @@ class PostProcessing(BaseStep):
         
         self.__saveChart(X, 'Absolute topic popularity by month in Stack Overflow', 'Month', 'Number of posts', 'results/General-Absolute-Popularity-Line-Chart.png')
 
-        plt.figure(figsize=(10,6))
+        plt.figure(figsize=(8,5))
         plt.stackplot(X, stackedY, labels=labelY)
         plt.margins(0,0)
         self.__saveChart(X, 'Absolute topic popularity by month in Stack Overflow', 'Month', 'Number of posts', 'results/General-Absolute-Popularity-Stacked-Chart.png')
