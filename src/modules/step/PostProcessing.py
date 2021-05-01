@@ -72,9 +72,6 @@ class PostProcessing(BaseStep):
     def __createCoherenceChart(self):
         print('  Creating coherence chart')
 
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-
         X = self.__experiments['num_topics'].tolist()
         Y = self.__experiments['iterations'].tolist()
         Z = self.__experiments['coherence'].tolist()
@@ -84,25 +81,27 @@ class PostProcessing(BaseStep):
         X_max = X[index]
         Y_max = Y[index]
 
+        fig = plt.figure(figsize=(10,6))
+        ax = fig.gca(projection='3d')
         surface = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0)
 
         ax.zaxis.set_major_locator(LinearLocator(10))
         ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
+        fig.colorbar(surface, shrink=0.5, aspect=5)
 
-        ax.set_title('Best experiment: iterations={} topics={} coherence={:.4f}'.format(Y_max, X_max, Z_max), pad=50)
-        ax.set_xlabel('Topics')
+        fig.suptitle('Coherence by iterations and number of topics\nBest experiment: iterations={} topics={} coherence={:.4f}'.format(Y_max, X_max, Z_max))
+        fig.tight_layout()
+
+        ax.set_xlabel('Number of topics')
         ax.set_ylabel('Iterations')
         ax.set_zlabel('Coherence')
 
-        fig.colorbar(surface, shrink=0.5, aspect=5)
-        plt.savefig('results/Coherence-Chart.png')
+        plt.savefig('results/Coherence-Chart.png', dpi=300)
         plt.clf()
     
     def __createPerplexityChart(self):
         print('  Creating perplexity chart')
-
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
 
         X = self.__experiments['iterations'].tolist()
         Y = self.__experiments['num_topics'].tolist()
@@ -113,18 +112,23 @@ class PostProcessing(BaseStep):
         X_max = X[index]
         Y_max = Y[index]
 
+        fig = plt.figure(figsize=(10,6))
+        ax = fig.gca(projection='3d')
         surface = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0)
 
         ax.zaxis.set_major_locator(LinearLocator(10))
-        ax.zaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+        ax.zaxis.set_major_formatter(FormatStrFormatter('%d'))
+        ax.xaxis.set_major_formatter(FormatStrFormatter('%d'))
         fig.colorbar(surface, shrink=0.5, aspect=5)
 
-        ax.set_title('Best experiment: iterations={} topics={} perplexity={:.0f}'.format(X_max, Y_max, Z_max), pad=50)
+        fig.suptitle('Perplexity by iterations and number of topics\nBest experiment: iterations={} topics={} perplexity={:.0f}'.format(X_max, Y_max, Z_max))
+        fig.tight_layout()
+
         ax.set_xlabel('Iterations')
-        ax.set_ylabel('Topics')
+        ax.set_ylabel('Number of topics')
         ax.set_zlabel('Perplexity')
 
-        plt.savefig('results/Perplexity-Chart.png')
+        plt.savefig('results/Perplexity-Chart.png', dpi=300)
         plt.clf()
     
     def __normalizeTopics(self, topics):
@@ -331,16 +335,16 @@ class PostProcessing(BaseStep):
                     else:
                         Y.append(rows.iloc[-1].relativePopularity)
                     
-                plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
+                if (any([ value for value in Y if value != 0 ])):
+                    plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
                 
-                        
-            plt.title(f'User {user} Relative Popularity')
+            plt.title(f'Relative topic popularity by month for user {user}')
             plt.xlabel("Month")
-            plt.ylabel("Relative Popularity")
+            plt.ylabel("Topic Popularity")
             plt.legend(ncol=3)
             plt.xticks(xticks, rotation=45)
             plt.tight_layout()
-            plt.savefig(f'results/User-{user}-Relative-Popularity-Chart.png')
+            plt.savefig(f'results/User-{user}-Relative-Popularity-Chart.png', dpi=300)
             plt.clf()
 
             plt.figure(figsize=(10,6))
@@ -356,16 +360,17 @@ class PostProcessing(BaseStep):
                     else:
                         Y.append(rows.iloc[-1].absolutePopularity)
 
-                plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
+                if (any([ value for value in Y if value != 0 ])):
+                    plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
                 
             
-            plt.title(f'User {user} Absolute Popularity')
+            plt.title(f'Absolute topic popularity by month for user {user}')
             plt.xlabel("Month")
-            plt.ylabel("Absolute Popularity")
+            plt.ylabel("Number of posts")
             plt.legend(ncol=3)
             plt.xticks(xticks, rotation=45)
             plt.tight_layout()
-            plt.savefig(f'results/User-{user}-Absolute-Popularity-Chart.png')
+            plt.savefig(f'results/User-{user}-Absolute-Popularity-Chart.png', dpi=300)
             plt.clf()
 
     def __createGeneralPopularityCharts(self):
@@ -398,15 +403,16 @@ class PostProcessing(BaseStep):
                 else:
                     Y.append(rows.iloc[-1].relativePopularity)
                 
-            plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
+            if (any([ value for value in Y if value != 0 ])):
+                plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
 
-        plt.title('General Relative Popularity')
+        plt.title('Relative topic popularity by month in Stack Overflow')
         plt.xlabel("Month")
-        plt.ylabel("Relative Popularity")
+        plt.ylabel("Topic Popularity")
         plt.legend(ncol=3)
         plt.xticks(xticks, rotation=45)
         plt.tight_layout()
-        plt.savefig('results/General-Relative-Popularity-Chart.png')
+        plt.savefig('results/General-Relative-Popularity-Chart.png', dpi=300)
         plt.clf()
 
         plt.figure(figsize=(10,6))
@@ -422,15 +428,16 @@ class PostProcessing(BaseStep):
                 else:
                     Y.append(rows.iloc[-1].absolutePopularity)
             
-            plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
+            if (any([ value for value in Y if value != 0 ])):
+                plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
         
-        plt.title('General Absolute Popularity')
+        plt.title('Absolute topic popularity by month in Stack Overflow')
         plt.xlabel("Month")
-        plt.ylabel("Absolute Popularity")
+        plt.ylabel("Number of posts")
         plt.legend(ncol=3)
         plt.xticks(xticks, rotation=45)
         plt.tight_layout()
-        plt.savefig('results/General-Absolute-Popularity-Chart.png')
+        plt.savefig('results/General-Absolute-Popularity-Chart.png', dpi=300)
         plt.clf()
     
     def _process(self):
@@ -440,14 +447,14 @@ class PostProcessing(BaseStep):
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         self.__countEmpty = 0
         
-        self.__model = tp.LDAModel.load(self.__modelFile)
-        self.__extractTopics()
+        # self.__model = tp.LDAModel.load(self.__modelFile)
+        # self.__extractTopics()
 
         self.__createCoherenceChart()
         self.__createPerplexityChart()
 
-        self.__computeGeneralPopularity()
+        # self.__computeGeneralPopularity()
         self.__createGeneralPopularityCharts()
         
-        self.__computeUserPopularity()
+        # self.__computeUserPopularity()
         self.__createUserPopularityCharts()
