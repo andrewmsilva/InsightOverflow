@@ -6,6 +6,7 @@ import pandas as pd
 import json
 import csv
 import random
+import statistics
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -37,10 +38,14 @@ class PostProcessing(BaseStep):
 
         self.__generalPopularityFile = 'results/general-popularity.csv'
         self.__generalPopularityFields = ['topic', 'date', 'absolutePopularity', 'relativePopularity']
+        self.__generalVarianceFile = 'results/general-variance.csv'
+        self.__generalVarianceFields = ['topic', 'variance']
         self.__generalPopularityDf = None
 
         self.__userPopularityFile = 'results/user-popularity.csv'
-        self.__userPopularityFields = ['user', 'topic', 'date', 'absolutePopularity', 'relativePopularity']
+        self.__userPopularityFields = ['user'] + self.__generalPopularityFields
+        self.__userVarianceFile = 'results/user-variance.csv'
+        self.__userVarianceFields = ['user'] + self.__generalVarianceFields
         self.__userPopularityDf = None
     
     def __createCSV(self, csvName, fields):
@@ -151,6 +156,33 @@ class PostProcessing(BaseStep):
     def __initCalculator(self):
         return {'count': 0, 'topicCount': [0]*self.__model.k, 'topicWeightSum': [0]*self.__model.k}
     
+    def __saveVariance(self, datesCount, popularities, csvName, user=None):
+        for topic in popularities.keys():
+            lengthDifference = datesCount - len(popularities[topic])
+
+            if lengthDifference > 0:
+                popularities[topic] = [0]*lengthDifference + popularities[topic]
+
+            variance = statistics.pvariance(popularities[topic])
+
+            if not user:
+                self.__appendToCSV(
+                    csvName,
+                    {
+                        'topic': topic,
+                        'variance': variance,
+                    }
+                )
+            else:
+                self.__appendToCSV(
+                csvName,
+                {
+                    'user': user,
+                    'topic': topic,
+                    'variance': variance,
+                }
+            )
+    
     def __computeUserPopularity(self):
         print('  Computing user popularity')
 
@@ -200,23 +232,32 @@ class PostProcessing(BaseStep):
 
         # Finishing relative popularity calculation
         self.__createCSV(self.__userPopularityFile, self.__userPopularityFields)
+        self.__createCSV(self.__userVarianceFile, self.__userVarianceFields)
         calculatedCount = 0
         for user in calculation.keys():
+            relativePopularities = {}
             for date in calculation[user].keys():
                 for topic in range(self.__model.k):
-                    # Print elapsed metric
+                    # Check if metric must be computed
+                    if calculation[user][date]['topicCount'][topic] == 0:
+                        if topic in relativePopularities.keys():
+                            relativePopularities[topic].append(0)
+                        continue
+                    
+                    # Print computed metrics
                     calculatedCount += 1
                     print('    Computed metrics:', calculatedCount, end='\r')
-
-                    # Check if keys exist
-                    if calculation[user][date]['topicCount'][topic] == 0:
-                        continue
 
                     # Compute populatities
                     absolutePopularity = calculation[user][date]['topicCount'][topic]
                     relativePopularity = calculation[user][date]['topicWeightSum'][topic] / calculation[user][date]['count']
 
-                    # Insert popularity to database
+                    # Append relative popularity to compute variance
+                    if topic not in relativePopularities.keys():
+                        relativePopularities[topic] = []
+                    relativePopularities[topic].append(relativePopularity)
+
+                    # Insert popularity to database]
                     self.__appendToCSV(
                         self.__userPopularityFile,
                         {
@@ -227,6 +268,7 @@ class PostProcessing(BaseStep):
                             'relativePopularity': relativePopularity,
                         }
                     )
+            self.__saveVariance(len(calculation[user].keys()), relativePopularities, self.__userVarianceFile, user)
         print()
     
     def __computeGeneralPopularity(self):
@@ -274,20 +316,29 @@ class PostProcessing(BaseStep):
 
         # Finishing relative popularity calculation
         self.__createCSV(self.__generalPopularityFile, self.__generalPopularityFields)
+        self.__createCSV(self.__generalVarianceFile, self.__generalVarianceFields)
+        relativePopularities = {}
         calculatedCount = 0
         for date in calculation.keys():
             for topic in range(self.__model.k):
-                # Print elapsed metric
+                # Check if metric must be computed
+                if calculation[date]['topicCount'][topic] == 0:
+                    if topic in relativePopularities.keys():
+                        relativePopularities[topic].append(0)
+                    continue
+                
+                # Print computed metrics
                 calculatedCount += 1
                 print('    Computed metrics:', calculatedCount, end='\r')
-
-                # Check if keys exist
-                if calculation[date]['topicCount'][topic] == 0:
-                    continue
 
                 # Compute populatities
                 absolutePopularity = calculation[date]['topicCount'][topic]
                 relativePopularity = calculation[date]['topicWeightSum'][topic] / calculation[date]['count']
+
+                # Append relative popularity to compute variance
+                if topic not in relativePopularities.keys():
+                    relativePopularities[topic] = []
+                relativePopularities[topic].append(relativePopularity)
 
                 # Insert popularity to database
                 self.__appendToCSV(
@@ -299,6 +350,7 @@ class PostProcessing(BaseStep):
                         'relativePopularity': relativePopularity,
                     }
                 )
+        self.__saveVariance(len(calculation.keys()), relativePopularities, self.__generalVarianceFile)
         print()
     
     def __getXTicks(self, X):
@@ -328,8 +380,14 @@ class PostProcessing(BaseStep):
         plt.clf()
     
     def __getUsersWithAtLeastOneYear(self, df):
+        candidates = []
         users = df.user.unique()
-        return [ user for user in users if len(list(df.loc[df.user == user].date.unique())) >= 12 ]
+        for user in users:
+            userDf = df.loc[df.user == user]
+            if len(userDf.date.unique()) >= 12:
+                candidates.append(user)
+        
+        return candidates
     
     def __createUserPopularityCharts(self):
         print('  Creating user popularity charts')
@@ -460,14 +518,14 @@ class PostProcessing(BaseStep):
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         self.__countEmpty = 0
         
-        # self.__model = tp.LDAModel.load(self.__modelFile)
+        self.__model = tp.LDAModel.load(self.__modelFile)
         # self.__extractTopics()
 
         self.__createCoherenceChart()
         self.__createPerplexityChart()
 
-        # self.__computeGeneralPopularity()
+        self.__computeGeneralPopularity()
         self.__createGeneralPopularityCharts()
         
-        # self.__computeUserPopularity()
+        self.__computeUserPopularity()
         self.__createUserPopularityCharts()
