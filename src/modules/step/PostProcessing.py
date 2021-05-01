@@ -301,6 +301,32 @@ class PostProcessing(BaseStep):
                 )
         print()
     
+    def __getXTicks(self, X):
+        if len(X) <= 20:
+            return X
+        
+        xticks = []
+        count = 0
+        for date in X:
+            if count == 6:
+                   count = 0
+            count += 1
+            if count == 1:
+                xticks.append(date)
+            else:
+                xticks.append('')
+        return xticks
+    
+    def __saveChart(self, X, title, xLabel, yLabel, path):       
+        plt.title(title)
+        plt.xlabel(xLabel)
+        plt.ylabel(yLabel)
+        plt.legend(ncol=3)
+        plt.xticks(self.__getXTicks(X), rotation=45)
+        plt.tight_layout()
+        plt.savefig(path, dpi=300)
+        plt.clf()
+    
     def __createUserPopularityCharts(self):
         print('  Creating user popularity charts')
         
@@ -309,21 +335,11 @@ class PostProcessing(BaseStep):
         random.seed(10)
         for user in random.sample(list(originalDf.user.unique()), 3,):
             df = originalDf.loc[originalDf.user == user]
-
             X = df.date.unique()
-            xticks = []
-            count = 0
-            for date in X:
-                if count == 6:
-                    count = 0
-                count += 1
-                if count == 1:
-                    xticks.append(date)
-                else:
-                    xticks.append('')
-            
             plt.figure(figsize=(10,6))
 
+            stackedY = []
+            labelY = []
             for topic in range(int(self.__experiment.num_topics)):
                 Y = []
                 for i in range(len(X)):
@@ -337,18 +353,19 @@ class PostProcessing(BaseStep):
                     
                 if (any([ value for value in Y if value != 0 ])):
                     plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
-                
-            plt.title(f'Relative topic popularity by month for user {user}')
-            plt.xlabel("Month")
-            plt.ylabel("Topic Popularity")
-            plt.legend(ncol=3)
-            plt.xticks(xticks, rotation=45)
-            plt.tight_layout()
-            plt.savefig(f'results/User-{user}-Relative-Popularity-Chart.png', dpi=300)
-            plt.clf()
+                    stackedY.append(Y)
+                    labelY.append(topic)
+            
+            self.__saveChart(X, f'Relative topic popularity by month for user {user}', 'Month', 'Topic Popularity', f'results/User-{user}-Relative-Popularity-Line-Chart.png')
 
             plt.figure(figsize=(10,6))
+            plt.stackplot(X, stackedY, labels=labelY)
+            plt.margins(0,0)
+            self.__saveChart(X, f'Relative topic popularity by month for user {user}', 'Month', 'Topic Popularity', f'results/User-{user}-Relative-Popularity-Stacked-Chart.png')
 
+            plt.figure(figsize=(10,6))
+            stackedY = []
+            labelY = []
             for topic in range(int(self.__experiment.num_topics)):
                 Y = []
                 for i in range(len(X)):
@@ -362,36 +379,25 @@ class PostProcessing(BaseStep):
 
                 if (any([ value for value in Y if value != 0 ])):
                     plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
-                
+                    stackedY.append(Y)
+                    labelY.append(topic)
             
-            plt.title(f'Absolute topic popularity by month for user {user}')
-            plt.xlabel("Month")
-            plt.ylabel("Number of posts")
-            plt.legend(ncol=3)
-            plt.xticks(xticks, rotation=45)
-            plt.tight_layout()
-            plt.savefig(f'results/User-{user}-Absolute-Popularity-Chart.png', dpi=300)
-            plt.clf()
+            self.__saveChart(X, f'Absolute topic popularity by month for user {user}', 'Month', 'Number of posts', f'results/User-{user}-Absolute-Popularity-Line-Chart.png')
+
+            plt.figure(figsize=(10,6))
+            plt.stackplot(X, stackedY, labels=labelY)
+            plt.margins(0,0)
+            self.__saveChart(X, f'Absolute topic popularity by month for user {user}', 'Month', 'Number of posts', f'results/User-{user}-Absolute-Popularity-Stacked-Chart.png')
 
     def __createGeneralPopularityCharts(self):
         print('  Creating general popularity charts')
 
         df = pd.read_csv(self.__generalPopularityFile, header=0)
-
         X = df.date.unique()
-        xticks = []
-        count = 0
-        for date in X:
-            if count == 6:
-                count = 0
-            count += 1
-            if count == 1:
-                xticks.append(date)
-            else:
-                xticks.append('')
-
         plt.figure(figsize=(10,6))
 
+        stackedY = []
+        labelY = []
         for topic in range(int(self.__experiment.num_topics)):
             Y = []
             for i in range(len(X)):
@@ -405,18 +411,17 @@ class PostProcessing(BaseStep):
                 
             if (any([ value for value in Y if value != 0 ])):
                 plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
+                stackedY.append(Y)
+                labelY.append(topic)
 
-        plt.title('Relative topic popularity by month in Stack Overflow')
-        plt.xlabel("Month")
-        plt.ylabel("Topic Popularity")
-        plt.legend(ncol=3)
-        plt.xticks(xticks, rotation=45)
-        plt.tight_layout()
-        plt.savefig('results/General-Relative-Popularity-Chart.png', dpi=300)
-        plt.clf()
+        self.__saveChart(X, 'Relative topic popularity by month in Stack Overflow', 'Month', 'Topic Popularity', 'results/General-Relative-Popularity-Line-Chart.png')
 
         plt.figure(figsize=(10,6))
+        plt.stackplot(X, stackedY, labels=labelY)
+        plt.margins(0,0)
+        self.__saveChart(X, 'Relative topic popularity by month in Stack Overflow', 'Month', 'Topic Popularity', 'results/General-Relative-Popularity-Stacked-Chart.png')
 
+        plt.figure(figsize=(10,6))
         for topic in range(int(self.__experiment.num_topics)):
             Y = []
             for i in range(len(X)):
@@ -431,14 +436,12 @@ class PostProcessing(BaseStep):
             if (any([ value for value in Y if value != 0 ])):
                 plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
         
-        plt.title('Absolute topic popularity by month in Stack Overflow')
-        plt.xlabel("Month")
-        plt.ylabel("Number of posts")
-        plt.legend(ncol=3)
-        plt.xticks(xticks, rotation=45)
-        plt.tight_layout()
-        plt.savefig('results/General-Absolute-Popularity-Chart.png', dpi=300)
-        plt.clf()
+        self.__saveChart(X, 'Absolute topic popularity by month in Stack Overflow', 'Month', 'Number of posts', 'results/General-Absolute-Popularity-Line-Chart.png')
+
+        plt.figure(figsize=(10,6))
+        plt.stackplot(X, stackedY, labels=labelY)
+        plt.margins(0,0)
+        self.__saveChart(X, 'Absolute topic popularity by month in Stack Overflow', 'Month', 'Number of posts', 'results/General-Absolute-Popularity-Stacked-Chart.png')
     
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
