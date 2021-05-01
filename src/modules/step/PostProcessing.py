@@ -339,7 +339,7 @@ class PostProcessing(BaseStep):
         print(f'    Users with at least one year of contribution: {len(users)}')
 
         random.seed(10)
-        for user in random.sample(users, 3):
+        for user in random.sample(users, 5):
             df = originalDf.loc[originalDf.user == user]
             X = df.date.unique()
             plt.figure(figsize=(8,5))
