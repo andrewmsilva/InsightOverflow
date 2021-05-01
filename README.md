@@ -6,12 +6,12 @@ Running this experiment requires downloading Stack Overflow posts from the [data
 
 ## Extraction
 
-```
+```sh
 Extraction started
   Extracted: 49598818
   Ignored: 739023
   Total: 50337841
-Execution time: 04:46:22.44
+Execution time: 04:11:27.56
 ```
 
 ## Pre-processing
@@ -47,4 +47,25 @@ Topic modeling started
   Experiment done: k=100 i=200 | p=1341.3547, cv=0.5787
   Experiment done: k=100 i=500 | p=1272.4512, cv=0.5794
 Execution time: 00:54:22.32
+```
+
+## Post-processing
+
+```
+Post-processing started
+  Extracting topics
+  Creating coherence chart
+  Creating perplexity chart
+  Computing general popularity
+    Posts covered: 49573604
+    Number of posts with empty topics: 36085
+    Computed metrics: 4410
+  Creating general popularity charts
+  Computing user popularity
+    Posts covered: 49573604
+    Number of users: 4943206
+    Number of posts with empty topics: 36085
+    Computed metrics: 534554010
+  Creating user popularity charts
+Execution time: 12:57:57.99
 ```
