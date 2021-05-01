@@ -422,6 +422,8 @@ class PostProcessing(BaseStep):
         self.__saveChart(X, 'Relative topic popularity by month in Stack Overflow', 'Month', 'Topic Popularity', 'results/General-Relative-Popularity-Stacked-Chart.png')
 
         plt.figure(figsize=(10,6))
+        stackedY = []
+        labelY = []
         for topic in range(int(self.__experiment.num_topics)):
             Y = []
             for i in range(len(X)):
@@ -435,6 +437,8 @@ class PostProcessing(BaseStep):
             
             if (any([ value for value in Y if value != 0 ])):
                 plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
+                stackedY.append(Y)
+                labelY.append(topic)
         
         self.__saveChart(X, 'Absolute topic popularity by month in Stack Overflow', 'Month', 'Number of posts', 'results/General-Absolute-Popularity-Line-Chart.png')
 
