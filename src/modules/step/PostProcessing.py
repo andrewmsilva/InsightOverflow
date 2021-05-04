@@ -15,7 +15,6 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import seaborn as sns
 
 sns.set_style('whitegrid')
-palette = plt.get_cmap('Set1')
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -37,16 +36,14 @@ class PostProcessing(BaseStep):
         self.__topicsFields = ['topic', 'label', 'words']
 
         self.__generalPopularityFile = 'results/general-popularity.csv'
-        self.__generalPopularityFields = ['topic', 'date', 'absolutePopularity', 'relativePopularity']
-        self.__generalVarianceFile = 'results/general-variance.csv'
-        self.__generalVarianceFields = ['topic', 'variance']
-        self.__generalPopularityDf = None
+        self.__generalPopularityFields = ['topic', 'date', 'popularity']
+        self.__generalLoyaltyFile = 'results/general-loyalty.csv'
+        self.__generalLoyaltyFields = ['topic', 'mean', 'variance', 'standardDeviation']
 
         self.__userPopularityFile = 'results/user-popularity.csv'
         self.__userPopularityFields = ['user'] + self.__generalPopularityFields
-        self.__userVarianceFile = 'results/user-variance.csv'
-        self.__userVarianceFields = ['user'] + self.__generalVarianceFields
-        self.__userPopularityDf = None
+        self.__userLoyaltyFile = 'results/user-loyalty.csv'
+        self.__userLoyaltyFields = ['user'] + self.__generalLoyaltyFields
     
     def __createCSV(self, csvName, fields):
         with open(csvName, 'w', newline='') as csvFile:
@@ -77,18 +74,18 @@ class PostProcessing(BaseStep):
     def __createCoherenceChart(self):
         print('  Creating coherence chart')
 
-        X = self.__experiments['num_topics'].tolist()
-        Y = self.__experiments['iterations'].tolist()
+        months = self.__experiments['num_topics'].tolist()
+        popularities = self.__experiments['iterations'].tolist()
         Z = self.__experiments['coherence'].tolist()
 
         Z_max = max(Z)
         index = Z.index(Z_max)
-        X_max = X[index]
-        Y_max = Y[index]
+        X_max = months[index]
+        Y_max = popularities[index]
 
         fig = plt.figure(figsize=(8,5))
         ax = fig.gca(projection='3d')
-        surface = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0)
+        surface = ax.plot_trisurf(months, popularities, Z, cmap=cm.coolwarm, linewidth=0)
 
         ax.zaxis.set_major_locator(LinearLocator(10))
         ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
@@ -108,18 +105,18 @@ class PostProcessing(BaseStep):
     def __createPerplexityChart(self):
         print('  Creating perplexity chart')
 
-        X = self.__experiments['iterations'].tolist()
-        Y = self.__experiments['num_topics'].tolist()
+        months = self.__experiments['iterations'].tolist()
+        popularities = self.__experiments['num_topics'].tolist()
         Z = self.__experiments['perplexity'].tolist()
 
         Z_max = min(Z)
         index = Z.index(Z_max)
-        X_max = X[index]
-        Y_max = Y[index]
+        X_max = months[index]
+        Y_max = popularities[index]
 
         fig = plt.figure(figsize=(8,5))
         ax = fig.gca(projection='3d')
-        surface = ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0)
+        surface = ax.plot_trisurf(months, popularities, Z, cmap=cm.coolwarm, linewidth=0)
 
         ax.zaxis.set_major_locator(LinearLocator(10))
         ax.zaxis.set_major_formatter(FormatStrFormatter('%d'))
@@ -154,23 +151,27 @@ class PostProcessing(BaseStep):
         return self.__normalizeTopics([ (topic, weight) for topic, weight in topics if weight >= threshold ])
 
     def __initCalculator(self):
-        return {'count': 0, 'topicCount': [0]*self.__model.k, 'topicWeightSum': [0]*self.__model.k}
+        return {'count': 0, 'weightSum': [0]*self.__model.k}
     
-    def __saveVariance(self, datesCount, popularities, csvName, user=None):
+    def __saveLoyalty(self, datesCount, popularities, csvName, user=None):
         for topic in popularities.keys():
             lengthDifference = datesCount - len(popularities[topic])
 
             if lengthDifference > 0:
                 popularities[topic] = [0]*lengthDifference + popularities[topic]
 
-            variance = statistics.pvariance(popularities[topic])
+            mean = statistics.mean(popularities[topic])
+            variance = statistics.pvariance(popularities[topic], mu=mean)
+            standardDeviation = variance**0.5
 
             if not user:
                 self.__appendToCSV(
                     csvName,
                     {
                         'topic': topic,
+                        'mean': mean,
                         'variance': variance,
+                        'standardDeviation': standardDeviation,
                     }
                 )
             else:
@@ -179,7 +180,9 @@ class PostProcessing(BaseStep):
                 {
                     'user': user,
                     'topic': topic,
+                    'mean': mean,
                     'variance': variance,
+                    'standardDeviation': standardDeviation,
                 }
             )
     
@@ -218,13 +221,9 @@ class PostProcessing(BaseStep):
                 content = self.__model.docs[index]
                 topics = self.__getTopics(content.get_topic_dist())
 
-                # Count and sum weight for each topic
+                # Sum weight for each topic
                 for topic, weight in topics:
-                    # Increment post counting for this topic
-                    calculation[user][date]['topicCount'][topic] += 1
-                    
-                    # Update post weight summation for this topic
-                    calculation[user][date]['topicWeightSum'][topic] += weight
+                    calculation[user][date]['weightSum'][topic] += weight
         
         # Print some results
         print('\n    Number of users:', len(calculation.keys()))
@@ -232,16 +231,16 @@ class PostProcessing(BaseStep):
 
         # Finishing relative popularity calculation
         self.__createCSV(self.__userPopularityFile, self.__userPopularityFields)
-        self.__createCSV(self.__userVarianceFile, self.__userVarianceFields)
+        self.__createCSV(self.__userLoyaltyFile, self.__userLoyaltyFields)
         calculatedCount = 0
         for user in calculation.keys():
-            relativePopularities = {}
+            popularities = {}
             for date in calculation[user].keys():
                 for topic in range(self.__model.k):
                     # Check if metric must be computed
-                    if calculation[user][date]['topicCount'][topic] == 0:
-                        if topic in relativePopularities.keys():
-                            relativePopularities[topic].append(0)
+                    if calculation[user][date]['weightSum'][topic] == 0:
+                        if topic in popularities.keys():
+                            popularities[topic].append(0)
                         continue
                     
                     # Print computed metrics
@@ -249,13 +248,12 @@ class PostProcessing(BaseStep):
                     print('    Computed metrics:', calculatedCount, end='\r')
 
                     # Compute populatities
-                    absolutePopularity = calculation[user][date]['topicCount'][topic]
-                    relativePopularity = calculation[user][date]['topicWeightSum'][topic] / calculation[user][date]['count']
+                    popularity = calculation[user][date]['weightSum'][topic] / calculation[user][date]['count']
 
                     # Append relative popularity to compute variance
-                    if topic not in relativePopularities.keys():
-                        relativePopularities[topic] = []
-                    relativePopularities[topic].append(relativePopularity)
+                    if topic not in popularities.keys():
+                        popularities[topic] = []
+                    popularities[topic].append(popularity)
 
                     # Insert popularity to database]
                     self.__appendToCSV(
@@ -264,11 +262,11 @@ class PostProcessing(BaseStep):
                             'user': user,
                             'topic': topic,
                             'date': date,
-                            'absolutePopularity': absolutePopularity,
-                            'relativePopularity': relativePopularity,
+                            'popularity': popularity,
                         }
                     )
-            self.__saveVariance(len(calculation[user].keys()), relativePopularities, self.__userVarianceFile, user)
+            popularities = { topic: popularities[topic] for topic in sorted(popularities.keys()) }
+            self.__saveLoyalty(len(calculation[user].keys()), popularities, self.__userLoyaltyFile, user)
         print()
     
     def __computeGeneralPopularity(self):
@@ -303,28 +301,24 @@ class PostProcessing(BaseStep):
                 content = self.__model.docs[index]
                 topics = self.__getTopics(content.get_topic_dist())
 
-                # Count and sum weight for each topic
+                # Sum weight for each topic
                 for topic, weight in topics:
-                    # Increment post counting for this topic
-                    calculation[date]['topicCount'][topic] += 1
-                    
-                    # Update post weight summation for this topic
-                    calculation[date]['topicWeightSum'][topic] += weight
+                    calculation[date]['weightSum'][topic] += weight
         
         # Print some results
         print('\n    Number of posts with empty topics:', self.__countEmpty)
 
         # Finishing relative popularity calculation
         self.__createCSV(self.__generalPopularityFile, self.__generalPopularityFields)
-        self.__createCSV(self.__generalVarianceFile, self.__generalVarianceFields)
-        relativePopularities = {}
+        self.__createCSV(self.__generalLoyaltyFile, self.__generalLoyaltyFields)
+        popularities = {}
         calculatedCount = 0
         for date in calculation.keys():
             for topic in range(self.__model.k):
                 # Check if metric must be computed
-                if calculation[date]['topicCount'][topic] == 0:
-                    if topic in relativePopularities.keys():
-                        relativePopularities[topic].append(0)
+                if calculation[date]['weightSum'][topic] == 0:
+                    if topic in popularities.keys():
+                        popularities[topic].append(0)
                     continue
                 
                 # Print computed metrics
@@ -332,13 +326,12 @@ class PostProcessing(BaseStep):
                 print('    Computed metrics:', calculatedCount, end='\r')
 
                 # Compute populatities
-                absolutePopularity = calculation[date]['topicCount'][topic]
-                relativePopularity = calculation[date]['topicWeightSum'][topic] / calculation[date]['count']
+                popularity = calculation[date]['weightSum'][topic] / calculation[date]['count']
 
                 # Append relative popularity to compute variance
-                if topic not in relativePopularities.keys():
-                    relativePopularities[topic] = []
-                relativePopularities[topic].append(relativePopularity)
+                if topic not in popularities.keys():
+                    popularities[topic] = []
+                popularities[topic].append(popularity)
 
                 # Insert popularity to database
                 self.__appendToCSV(
@@ -346,20 +339,20 @@ class PostProcessing(BaseStep):
                     {
                         'topic': topic,
                         'date': date,
-                        'absolutePopularity': absolutePopularity,
-                        'relativePopularity': relativePopularity,
+                        'popularity': popularity,
                     }
                 )
-        self.__saveVariance(len(calculation.keys()), relativePopularities, self.__generalVarianceFile)
+        popularities = { topic: popularities[topic] for topic in sorted(popularities.keys()) }
+        self.__saveLoyalty(len(calculation.keys()), popularities, self.__generalLoyaltyFile)
         print()
     
-    def __getXTicks(self, X):
-        if len(X) <= 20:
-            return X
+    def __getXTicks(self, months):
+        if len(months) <= 20:
+            return months
         
         xticks = []
         count = 0
-        for date in X:
+        for date in months:
             if count == 6:
                    count = 0
             count += 1
@@ -369,12 +362,12 @@ class PostProcessing(BaseStep):
                 xticks.append('')
         return xticks
     
-    def __saveChart(self, X, title, xLabel, yLabel, path):       
+    def __saveChart(self, title, xLabel, yLabel, xTicks, path, legends=True):       
         plt.title(title)
         plt.xlabel(xLabel)
         plt.ylabel(yLabel)
-        plt.legend(bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0, ncol=2)
-        plt.xticks(self.__getXTicks(X), rotation=45)
+        if legends: plt.legend(bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0, ncol=2)
+        if isinstance(xTicks, list): plt.xticks(xTicks, rotation=45)
         plt.tight_layout()
         plt.savefig(path, dpi=300)
         plt.clf()
@@ -384,132 +377,116 @@ class PostProcessing(BaseStep):
         users = df.user.unique()
         for user in users:
             userDf = df.loc[df.user == user]
-            if len(userDf.date.unique()) >= 12:
+            if len(userDf.date.unique()) >= 2:
                 candidates.append(user)
         
         return candidates
     
-    def __createUserPopularityCharts(self):
+    def __createUserCharts(self):
         print('  Creating user popularity charts')
         
-        originalDf = pd.read_csv(self.__userPopularityFile, header=0)
-        users = self.__getUsersWithAtLeastOneYear(originalDf)
+        originalPopularityDf = pd.read_csv(self.__userPopularityFile, header=0)
+        originalloyaltyDf = pd.read_csv(self.__userLoyaltyFile, header=0)
+
+        users = self.__getUsersWithAtLeastOneYear(originalPopularityDf)
         print(f'    Users with at least one year of contribution: {len(users)}')
 
         random.seed(10)
         for user in random.sample(users, 5):
-            df = originalDf.loc[originalDf.user == user]
-            X = df.date.unique()
-            plt.figure(figsize=(8,5))
+            popularityDf = originalPopularityDf.loc[originalPopularityDf.user == user]
+            loyaltyDf = originalloyaltyDf.loc[originalloyaltyDf.user == user]
+            months = popularityDf.date.unique()
 
-            stackedY = []
-            labelY = []
+            popularitiesByMonth = []
+            standardDeviations = []
+            topics = []
             for topic in range(int(self.__experiment.num_topics)):
-                Y = []
-                for i in range(len(X)):
-                    date = X[i]
-                    rows = df.loc[(df.date == date) & (df.topic == topic)]
+                popularities = []
+                for i in range(len(months)):
+                    date = months[i]
+                    popularitiesRows = popularityDf.loc[(popularityDf.date == date) & (popularityDf.topic == topic)]
                     
-                    if len(rows) == 0:
-                        Y.append(0)
+                    if len(popularitiesRows) == 0:
+                        popularities.append(0)
                     else:
-                        Y.append(rows.iloc[-1].relativePopularity)
+                        popularities.append(popularitiesRows.iloc[-1].popularity)
                     
-                if (any([ value for value in Y if value != 0 ])):
-                    plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
-                    stackedY.append(Y)
-                    labelY.append(topic)
+                if (any([ value for value in popularities if value != 0 ])):
+                    popularitiesByMonth.append(popularities)
+                    topics.append(topic)
+                
+                if topic in topics:
+                    loyaltyRows = loyaltyDf.loc[loyaltyDf.topic == topic]
+                    standardDeviations.append(loyaltyRows.iloc[-1].standardDeviation)
             
-            self.__saveChart(X, f'Relative topic popularity by month for user {user}', 'Month', 'Topic Popularity', f'results/User-{user}-Relative-Popularity-Line-Chart.png')
-
-            plt.figure(figsize=(8,5))
-            plt.stackplot(X, stackedY, labels=labelY)
-            plt.margins(0,0)
-            self.__saveChart(X, f'Relative topic popularity by month for user {user}', 'Month', 'Topic Popularity', f'results/User-{user}-Relative-Popularity-Stacked-Chart.png')
-
-            plt.figure(figsize=(8,5))
-            stackedY = []
-            labelY = []
-            for topic in range(int(self.__experiment.num_topics)):
-                Y = []
-                for i in range(len(X)):
-                    date = X[i]
-                    rows = df.loc[(df.date == date) & (df.topic == topic)]
-                    
-                    if len(rows) == 0:
-                        Y.append(0)
-                    else:
-                        Y.append(int(rows.iloc[-1].absolutePopularity))
-
-                if (any([ value for value in Y if value != 0 ])):
-                    plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
-                    stackedY.append(Y)
-                    labelY.append(topic)
+            # Create palette
+            palette = sns.color_palette('muted', len(topics))
             
-            self.__saveChart(X, f'Absolute topic popularity by month for user {user}', 'Month', 'Number of posts', f'results/User-{user}-Absolute-Popularity-Line-Chart.png')
-
+            # Create line chart
             plt.figure(figsize=(8,5))
-            plt.stackplot(X, stackedY, labels=labelY)
-            plt.margins(0,0)
-            self.__saveChart(X, f'Absolute topic popularity by month for user {user}', 'Month', 'Number of posts', f'results/User-{user}-Absolute-Popularity-Stacked-Chart.png')
+            for i in range(len(topics)):
+                plt.plot(months, popularitiesByMonth[i], marker='', color=palette[i], linewidth=1, label=topics[i])
+            self.__saveChart(f'Topic popularity by month for user {user}', 'Month', 'Topic Popularity', self.__getXTicks(months), f'results/User-{user}-Popularity-Line-Chart.png')
 
-    def __createGeneralPopularityCharts(self):
+            # Create Stacked chart
+            plt.figure(figsize=(8,5))
+            plt.stackplot(months, popularitiesByMonth, labels=topics, colors=palette)
+            plt.margins(0,0)
+            self.__saveChart(f'Topic popularity by month for user {user}', 'Month', 'Topic Popularity', self.__getXTicks(months), f'results/User-{user}-Popularity-Stacked-Chart.png')
+
+             # Create bar chart
+            plt.figure(figsize=(8,5))
+            plt.bar([ str(topic) for topic in topics ], standardDeviations, color=palette)
+            plt.margins(0,0)
+            self.__saveChart(f'Topic loyalty for user {user}', 'Topic', 'Standard deviation', None, f'results/User-{user}-Loyalty-Bar-Chart.png', False)
+
+    def __createGeneralCharts(self):
         print('  Creating general popularity charts')
 
-        df = pd.read_csv(self.__generalPopularityFile, header=0)
-        X = df.date.unique()
-        plt.figure(figsize=(8,5))
+        popularityDf = pd.read_csv(self.__generalPopularityFile, header=0)
+        loyaltyDf = pd.read_csv(self.__generalLoyaltyFile, header=0)
+        months = popularityDf.date.unique()
 
-        stackedY = []
-        labelY = []
+        popularitiesByMonth = []
+        standardDeviations = []
+        topics = []
         for topic in range(int(self.__experiment.num_topics)):
-            Y = []
-            for i in range(len(X)):
-                date = X[i]
-                rows = df.loc[(df.date == date) & (df.topic == topic)]
-                
-                if len(rows) == 0:
-                    Y.append(0)
+            popularities = []
+            for i in range(len(months)):
+                popularityRows = popularityDf.loc[(popularityDf.date == months[i]) & (popularityDf.topic == topic)]
+                if len(popularityRows) == 0:
+                    popularities.append(0)
                 else:
-                    Y.append(rows.iloc[-1].relativePopularity)
+                    popularities.append(popularityRows.iloc[-1].popularity)
                 
-            if (any([ value for value in Y if value != 0 ])):
-                plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
-                stackedY.append(Y)
-                labelY.append(topic)
-
-        self.__saveChart(X, 'Relative topic popularity by month in Stack Overflow', 'Month', 'Topic Popularity', 'results/General-Relative-Popularity-Line-Chart.png')
-
-        plt.figure(figsize=(8,5))
-        plt.stackplot(X, stackedY, labels=labelY)
-        plt.margins(0,0)
-        self.__saveChart(X, 'Relative topic popularity by month in Stack Overflow', 'Month', 'Topic Popularity', 'results/General-Relative-Popularity-Stacked-Chart.png')
-
-        plt.figure(figsize=(8,5))
-        stackedY = []
-        labelY = []
-        for topic in range(int(self.__experiment.num_topics)):
-            Y = []
-            for i in range(len(X)):
-                date = X[i]
-                rows = df.loc[(df.date == date) & (df.topic == topic)]
-                
-                if len(rows) == 0:
-                    Y.append(0)
-                else:
-                    Y.append(int(rows.iloc[-1].absolutePopularity))
+            if (any([ value for value in popularities if value != 0 ])):
+                popularitiesByMonth.append(popularities)
+                topics.append(topic)
             
-            if (any([ value for value in Y if value != 0 ])):
-                plt.plot(X, Y, marker='', color=palette(topic), linewidth=1, alpha=0.9, label=topic)
-                stackedY.append(Y)
-                labelY.append(topic)
+            if topic in topics:
+                loyaltyRows = loyaltyDf.loc[loyaltyDf.topic == topic]
+                standardDeviations.append(loyaltyRows.iloc[-1].standardDeviation)
         
-        self.__saveChart(X, 'Absolute topic popularity by month in Stack Overflow', 'Month', 'Number of posts', 'results/General-Absolute-Popularity-Line-Chart.png')
+        # Create palette
+        palette = sns.color_palette('muted', len(topics))
 
+        # Create line chart
         plt.figure(figsize=(8,5))
-        plt.stackplot(X, stackedY, labels=labelY)
+        for i in range(len(topics)):
+            plt.plot(months, popularitiesByMonth[i], marker='', color=palette[i], linewidth=1, label=topics[i])
+        self.__saveChart('Topic popularity by month in Stack Overflow', 'Month', 'Topic Popularity', self.__getXTicks(months), 'results/General-Popularity-Line-Chart.png')
+
+        # Create stacked chart
+        plt.figure(figsize=(8,5))
+        plt.stackplot(months, popularitiesByMonth, labels=topics, colors=palette)
         plt.margins(0,0)
-        self.__saveChart(X, 'Absolute topic popularity by month in Stack Overflow', 'Month', 'Number of posts', 'results/General-Absolute-Popularity-Stacked-Chart.png')
+        self.__saveChart('Topic popularity by month in Stack Overflow', 'Month', 'Topic Popularity', self.__getXTicks(months), 'results/General-Popularity-Stacked-Chart.png')
+
+        # Create bar chart
+        plt.figure(figsize=(8,5))
+        plt.bar([ str(topic) for topic in topics ], standardDeviations, color=palette)
+        plt.margins(0,0)
+        self.__saveChart('Topic loyalty in Stack Overflow', 'Topic', 'Standard deviation', topics, 'results/General-Loyalty-Bar-Chart.png', False)
     
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
@@ -525,7 +502,7 @@ class PostProcessing(BaseStep):
         self.__createPerplexityChart()
 
         self.__computeGeneralPopularity()
-        self.__createGeneralPopularityCharts()
+        self.__createGeneralCharts()
         
         self.__computeUserPopularity()
-        self.__createUserPopularityCharts()
+        self.__createUserCharts()
