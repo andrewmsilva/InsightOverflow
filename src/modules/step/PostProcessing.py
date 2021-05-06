@@ -286,6 +286,7 @@ class PostProcessing(BaseStep):
                     )
             popularities = { topic: popularities[topic] for topic in sorted(popularities.keys()) }
             self.__saveLoyalty(len(calculation[user].keys()), popularities, self.__userLoyaltyFile, user)
+            calculatedCount += 4
         print()
     
     def __computeGeneralPopularity(self):
