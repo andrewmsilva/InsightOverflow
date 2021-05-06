@@ -3,10 +3,12 @@ from ..data.Posts import Posts
 
 import tomotopy as tp
 import pandas as pd
+import numpy as np
 import json
 import csv
 import random
 import statistics
+import pymannkendall as mk
 from collections import Iterable 
 
 from mpl_toolkits.mplot3d import Axes3D
@@ -41,7 +43,7 @@ class PostProcessing(BaseStep):
         self.__generalPopularityFile = 'results/general-popularity.csv'
         self.__generalPopularityFields = ['topic', 'date', 'popularity']
         self.__generalLoyaltyFile = 'results/general-loyalty.csv'
-        self.__generalLoyaltyFields = ['topic', 'mean', 'variance', 'standardDeviation']
+        self.__generalLoyaltyFields = ['topic', 'mean', 'variance', 'standardDeviation', 'trend']
 
         self.__userPopularityFile = 'results/user-popularity.csv'
         self.__userPopularityFields = ['user'] + self.__generalPopularityFields
@@ -173,6 +175,11 @@ class PostProcessing(BaseStep):
             mean = statistics.mean(popularities[topic])
             variance = statistics.pvariance(popularities[topic], mu=mean)
             standardDeviation = variance**0.5
+            try:
+                mkObj = mk.original_test(popularities[topic])
+                trend = mkObj.trend
+            except:
+                trend = 'no trend'
 
             if not user:
                 self.__appendToCSV(
@@ -182,6 +189,7 @@ class PostProcessing(BaseStep):
                         'mean': mean,
                         'variance': variance,
                         'standardDeviation': standardDeviation,
+                        'trend': trend,
                     }
                 )
             else:
@@ -193,6 +201,7 @@ class PostProcessing(BaseStep):
                     'mean': mean,
                     'variance': variance,
                     'standardDeviation': standardDeviation,
+                    'trend': trend,
                 }
             )
     
