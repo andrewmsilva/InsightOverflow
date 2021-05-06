@@ -7,6 +7,7 @@ import json
 import csv
 import random
 import statistics
+from collections import Iterable 
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -33,7 +34,9 @@ class PostProcessing(BaseStep):
         self.__posts = Posts(preProcessed=True, memory=False, splitted=True)
 
         self.__topicsFile = 'results/topics.csv'
+        self.__labaledTopicsFile = 'results/labeled-topics.csv'
         self.__topicsFields = ['topic', 'label', 'words']
+        self.__labels = None
 
         self.__generalPopularityFile = 'results/general-popularity.csv'
         self.__generalPopularityFields = ['topic', 'date', 'popularity']
@@ -70,6 +73,13 @@ class PostProcessing(BaseStep):
                     'words': ' '.join([ t[0] for t in self.__model.get_topic_words(topic) ]),
                 }
             )
+    
+    def __loadLabeledTopics(self):
+        try:
+            df = pd.read_csv(self.__labaledTopicsFile, header=0)
+            self.__labels = df.label.tolist()
+        except:
+            pass
     
     def __createCoherenceChart(self):
         print('  Creating coherence chart')
@@ -362,14 +372,12 @@ class PostProcessing(BaseStep):
                 xticks.append('')
         return xticks
     
-    def __saveChart(self, title, xLabel, yLabel, xTicks, path, legends=True):       
-        plt.title(title)
-        plt.xlabel(xLabel)
+    def __saveChart(self, yLabel, xTicks, path, legends=True):       
         plt.ylabel(yLabel)
-        if legends: plt.legend(bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0, ncol=2)
-        if isinstance(xTicks, list): plt.xticks(xTicks, rotation=45)
+        if legends: plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=4, fontsize='small',  borderaxespad=0, labelspacing=0.8)
+        if isinstance(xTicks, Iterable): plt.xticks(xTicks)
         plt.tight_layout()
-        plt.savefig(path, dpi=300)
+        plt.savefig(path, dpi=600)
         plt.clf()
     
     def __getUsersWithAtLeastOneYear(self, df):
@@ -386,15 +394,17 @@ class PostProcessing(BaseStep):
         print('  Creating user popularity charts')
         
         originalPopularityDf = pd.read_csv(self.__userPopularityFile, header=0)
-        originalloyaltyDf = pd.read_csv(self.__userLoyaltyFile, header=0)
+        originalLoyaltyDf = pd.read_csv(self.__userLoyaltyFile, header=0)
 
-        users = self.__getUsersWithAtLeastOneYear(originalPopularityDf)
-        print(f'    Users with at least one year of contribution: {len(users)}')
+        # users = self.__getUsersWithAtLeastOneYear(originalPopularityDf)
+        # print(f'    Users with at least one year of contribution: {len(users)}')
+
+        users = list(originalLoyaltyDf.user.unique())
 
         random.seed(10)
         for user in random.sample(users, 5):
             popularityDf = originalPopularityDf.loc[originalPopularityDf.user == user]
-            loyaltyDf = originalloyaltyDf.loc[originalloyaltyDf.user == user]
+            loyaltyDf = originalLoyaltyDf.loc[originalLoyaltyDf.user == user]
             months = popularityDf.date.unique()
 
             popularitiesByMonth = []
@@ -421,24 +431,29 @@ class PostProcessing(BaseStep):
             
             # Create palette
             palette = sns.color_palette('muted', len(topics))
+
+            # Load topic labels if possible
+            labels = [ self.__labels[i] for i in topics ] if isinstance(self.__labels, list) else topics
             
             # Create line chart
             plt.figure(figsize=(8,5))
             for i in range(len(topics)):
-                plt.plot(months, popularitiesByMonth[i], marker='', color=palette[i], linewidth=1, label=topics[i])
-            self.__saveChart(f'Topic popularity by month for user {user}', 'Month', 'Topic Popularity', self.__getXTicks(months), f'results/User-{user}-Popularity-Line-Chart.png')
+                plt.plot(months, popularitiesByMonth[i], marker='', color=palette[i], linewidth=1, label=labels[i])
+            self.__saveChart('Topic Popularity', self.__getXTicks(months), f'results/User-{user}-Popularity-Line-Chart.png')
 
             # Create Stacked chart
             plt.figure(figsize=(8,5))
-            plt.stackplot(months, popularitiesByMonth, labels=topics, colors=palette)
+            plt.stackplot(months, popularitiesByMonth, labels=labels, colors=palette)
             plt.margins(0,0)
-            self.__saveChart(f'Topic popularity by month for user {user}', 'Month', 'Topic Popularity', self.__getXTicks(months), f'results/User-{user}-Popularity-Stacked-Chart.png')
+            self.__saveChart('Topic Popularity', self.__getXTicks(months), f'results/User-{user}-Popularity-Stacked-Chart.png')
 
-             # Create bar chart
+            # Create bar chart
             plt.figure(figsize=(8,5))
-            plt.bar([ str(topic) for topic in topics ], standardDeviations, color=palette)
+            enum = [x for x, _ in enumerate(labels)]
+            plt.bar(enum, standardDeviations, color=palette)
+            plt.xticks(enum, labels, rotation=45, ha='right')
             plt.margins(0,0)
-            self.__saveChart(f'Topic loyalty for user {user}', 'Topic', 'Standard deviation', None, f'results/User-{user}-Loyalty-Bar-Chart.png', False)
+            self.__saveChart('Standard deviation', None, f'results/User-{user}-Loyalty-Bar-Chart.png', False)
 
     def __createGeneralCharts(self):
         print('  Creating general popularity charts')
@@ -470,23 +485,28 @@ class PostProcessing(BaseStep):
         # Create palette
         palette = sns.color_palette('muted', len(topics))
 
+        # Load topic labels if possible
+        labels = [ self.__labels[i] for i in topics ] if isinstance(self.__labels, list) else topics
+
         # Create line chart
         plt.figure(figsize=(8,5))
         for i in range(len(topics)):
-            plt.plot(months, popularitiesByMonth[i], marker='', color=palette[i], linewidth=1, label=topics[i])
-        self.__saveChart('Topic popularity by month in Stack Overflow', 'Month', 'Topic Popularity', self.__getXTicks(months), 'results/General-Popularity-Line-Chart.png')
+            plt.plot(months, popularitiesByMonth[i], marker='', color=palette[i], linewidth=1, label=labels[i])
+        self.__saveChart('Topic Popularity', self.__getXTicks(months), 'results/General-Popularity-Line-Chart.png')
 
         # Create stacked chart
         plt.figure(figsize=(8,5))
-        plt.stackplot(months, popularitiesByMonth, labels=topics, colors=palette)
+        plt.stackplot(months, popularitiesByMonth, labels=labels, colors=palette)
         plt.margins(0,0)
-        self.__saveChart('Topic popularity by month in Stack Overflow', 'Month', 'Topic Popularity', self.__getXTicks(months), 'results/General-Popularity-Stacked-Chart.png')
+        self.__saveChart('Topic Popularity', self.__getXTicks(months), 'results/General-Popularity-Stacked-Chart.png')
 
         # Create bar chart
         plt.figure(figsize=(8,5))
-        plt.bar([ str(topic) for topic in topics ], standardDeviations, color=palette)
+        enum = [x for x, _ in enumerate(labels)]
+        plt.bar(enum, standardDeviations, color=palette)
+        plt.xticks(enum, labels, rotation=45, ha='right')
         plt.margins(0,0)
-        self.__saveChart('Topic loyalty in Stack Overflow', 'Topic', 'Standard deviation', topics, 'results/General-Loyalty-Bar-Chart.png', False)
+        self.__saveChart('Standard deviation', None, 'results/General-Loyalty-Bar-Chart.png', False)
     
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
@@ -497,6 +517,7 @@ class PostProcessing(BaseStep):
         
         self.__model = tp.LDAModel.load(self.__modelFile)
         # self.__extractTopics()
+        self.__loadLabeledTopics()
 
         self.__createCoherenceChart()
         self.__createPerplexityChart()
