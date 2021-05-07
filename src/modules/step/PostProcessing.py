@@ -8,7 +8,6 @@ import json
 import csv
 import random
 import statistics
-import pymannkendall as mk
 from collections import Iterable 
 
 from mpl_toolkits.mplot3d import Axes3D
