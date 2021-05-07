@@ -384,8 +384,10 @@ class PostProcessing(BaseStep):
         users = df.user.unique()
         for user in users:
             userDf = df.loc[df.user == user]
-            if len(userDf.date.unique()) >= 2:
+            monthsCount = len(userDf.date.unique())
+            if lmonthsCount >= 12:
                 candidates.append(user)
+                print(f'    User {user}: {monthsCount}')
         
         return candidates
     
@@ -395,10 +397,8 @@ class PostProcessing(BaseStep):
         originalPopularityDf = pd.read_csv(self.__userPopularityFile, header=0)
         originalLoyaltyDf = pd.read_csv(self.__userLoyaltyFile, header=0)
 
-        # users = self.__getUsersWithAtLeastOneYear(originalPopularityDf)
-        # print(f'    Users with at least one year of contribution: {len(users)}')
-
-        users = list(originalLoyaltyDf.user.unique())
+        users = self.__getUsersWithAtLeastOneYear(originalPopularityDf)
+        print(f'    Users with at least one year of contribution: {len(users)}')
 
         random.seed(10)
         for user in random.sample(users, 5):
