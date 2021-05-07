@@ -385,7 +385,7 @@ class PostProcessing(BaseStep):
         for user in users:
             userDf = df.loc[df.user == user]
             monthsCount = len(userDf.date.unique())
-            if lmonthsCount >= 12:
+            if monthsCount >= 12:
                 candidates.append(user)
                 print(f'    User {user}: {monthsCount}')
         
@@ -483,7 +483,6 @@ class PostProcessing(BaseStep):
         
         # Create palette
         palette = sns.color_palette('muted', len(topics))
-        
 
         # Load topic labels if possible
         labels = [ self.__labels[i] for i in topics ] if isinstance(self.__labels, list) else topics
