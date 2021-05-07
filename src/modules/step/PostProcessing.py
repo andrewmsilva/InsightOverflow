@@ -175,11 +175,6 @@ class PostProcessing(BaseStep):
             mean = statistics.mean(popularities[topic])
             variance = statistics.pvariance(popularities[topic], mu=mean)
             standardDeviation = variance**0.5
-            try:
-                mkObj = mk.original_test(popularities[topic])
-                trend = mkObj.trend
-            except:
-                trend = 'no trend'
 
             if not user:
                 self.__appendToCSV(
@@ -189,7 +184,6 @@ class PostProcessing(BaseStep):
                         'mean': mean,
                         'variance': variance,
                         'standardDeviation': standardDeviation,
-                        'trend': trend,
                     }
                 )
             else:
@@ -201,7 +195,6 @@ class PostProcessing(BaseStep):
                     'mean': mean,
                     'variance': variance,
                     'standardDeviation': standardDeviation,
-                    'trend': trend,
                 }
             )
     
@@ -219,9 +212,6 @@ class PostProcessing(BaseStep):
                 break
             # Compute the metrics if content is not empty
             elif len(post['content']) > 0:
-                index += 1
-                print('    Posts covered:', index+1, end='\r')
-
                 # Get data
                 content = post['content']
                 user = post['user']
@@ -237,6 +227,7 @@ class PostProcessing(BaseStep):
                 calculation[user][date]['count'] += 1
                 
                 # Get post topics
+                index += 1
                 content = self.__model.docs[index]
                 topics = self.__getTopics(content.get_topic_dist())
 
@@ -245,13 +236,15 @@ class PostProcessing(BaseStep):
                     calculation[user][date]['weightSum'][topic] += weight
         
         # Print some results
-        print('\n    Number of users:', len(calculation.keys()))
-        print('    Number of posts with empty topics:', self.__countEmpty)
+        print('    Number of users:', len(calculation.keys()))
+        print('    Posts with empty topics:', self.__countEmpty)
 
-        # Finishing relative popularity calculation
+        # Initialize CSVs
         self.__createCSV(self.__userPopularityFile, self.__userPopularityFields)
         self.__createCSV(self.__userLoyaltyFile, self.__userLoyaltyFields)
-        calculatedCount = 0
+
+        # Finish relative popularity calculation
+        computedCount = 0
         for user in calculation.keys():
             popularities = {}
             for date in calculation[user].keys():
@@ -262,12 +255,9 @@ class PostProcessing(BaseStep):
                             popularities[topic].append(0)
                         continue
                     
-                    # Print computed metrics
-                    calculatedCount += 1
-                    print('    Computed metrics:', calculatedCount, end='\r')
-
                     # Compute populatities
                     popularity = calculation[user][date]['weightSum'][topic] / calculation[user][date]['count']
+                    computedCount += 1
 
                     # Append relative popularity to compute variance
                     if topic not in popularities.keys():
@@ -286,8 +276,9 @@ class PostProcessing(BaseStep):
                     )
             popularities = { topic: popularities[topic] for topic in sorted(popularities.keys()) }
             self.__saveLoyalty(len(calculation[user].keys()), popularities, self.__userLoyaltyFile, user)
-            calculatedCount += 4
-        print()
+            computedCount += 4
+        
+        print('    Computed metrics:', computedCount)
     
     def __computeGeneralPopularity(self):
         print('  Computing general popularity')
@@ -303,9 +294,6 @@ class PostProcessing(BaseStep):
                 break
             # Compute the metrics if content is not empty
             elif len(post['content']) > 0:
-                index += 1
-                print('    Posts covered:', index+1, end='\r')
-
                 # Get data
                 content = post['content']
                 date = post['date'][:7]
@@ -318,6 +306,7 @@ class PostProcessing(BaseStep):
                 calculation[date]['count'] += 1
                 
                 # Get post topics
+                index += 1
                 content = self.__model.docs[index]
                 topics = self.__getTopics(content.get_topic_dist())
 
@@ -326,13 +315,15 @@ class PostProcessing(BaseStep):
                     calculation[date]['weightSum'][topic] += weight
         
         # Print some results
-        print('\n    Number of posts with empty topics:', self.__countEmpty)
+        print('    Posts with empty topics:', self.__countEmpty)
 
-        # Finishing relative popularity calculation
+        # Initialize CSVs
         self.__createCSV(self.__generalPopularityFile, self.__generalPopularityFields)
         self.__createCSV(self.__generalLoyaltyFile, self.__generalLoyaltyFields)
+
+        # Finish relative popularity calculation
         popularities = {}
-        calculatedCount = 0
+        computedCount = 0
         for date in calculation.keys():
             for topic in range(self.__model.k):
                 # Check if metric must be computed
@@ -341,12 +332,9 @@ class PostProcessing(BaseStep):
                         popularities[topic].append(0)
                     continue
                 
-                # Print computed metrics
-                calculatedCount += 1
-                print('    Computed metrics:', calculatedCount, end='\r')
-
                 # Compute populatities
                 popularity = calculation[date]['weightSum'][topic] / calculation[date]['count']
+                computedCount += 1
 
                 # Append relative popularity to compute variance
                 if topic not in popularities.keys():
@@ -364,7 +352,9 @@ class PostProcessing(BaseStep):
                 )
         popularities = { topic: popularities[topic] for topic in sorted(popularities.keys()) }
         self.__saveLoyalty(len(calculation.keys()), popularities, self.__generalLoyaltyFile)
-        print()
+        computedCount += 4
+        
+        print('    Computed metrics:', computedCount)
     
     def __getXTicks(self, months):
         if len(months) <= 20:
@@ -384,8 +374,8 @@ class PostProcessing(BaseStep):
     
     def __saveChart(self, yLabel, xTicks, path, legends=True):       
         plt.ylabel(yLabel)
-        if legends: plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=4, fontsize='small',  borderaxespad=0, labelspacing=0.8)
-        if isinstance(xTicks, Iterable): plt.xticks(xTicks)
+        if legends: plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=4, fontsize='small',  borderaxespad=0, labelspacing=0.8)
+        if isinstance(xTicks, Iterable): plt.xticks(xTicks, rotation=45, ha='left', position=(1,1))
         plt.tight_layout()
         plt.savefig(path, dpi=600)
         plt.clf()
@@ -444,20 +434,20 @@ class PostProcessing(BaseStep):
 
             # Load topic labels if possible
             labels = [ self.__labels[i] for i in topics ] if isinstance(self.__labels, list) else topics
-            
-            # Create line chart
-            plt.figure(figsize=(8,5))
-            for i in range(len(topics)):
-                plt.plot(months, popularitiesByMonth[i], marker='', color=palette[i], linewidth=1, label=labels[i])
-            self.__saveChart('Topic Popularity', self.__getXTicks(months), f'results/User-{user}-Popularity-Line-Chart.png')
 
             # Create Stacked chart
+            plt.rcParams['xtick.labelbottom'] = False
+            plt.rcParams['xtick.labeltop'] = True
+
             plt.figure(figsize=(8,5))
             plt.stackplot(months, popularitiesByMonth, labels=labels, colors=palette)
             plt.margins(0,0)
             self.__saveChart('Topic Popularity', self.__getXTicks(months), f'results/User-{user}-Popularity-Stacked-Chart.png')
 
             # Create bar chart
+            plt.rcParams['xtick.labelbottom'] = True
+            plt.rcParams['xtick.labeltop'] = False
+
             plt.figure(figsize=(8,5))
             enum = [x for x, _ in enumerate(labels)]
             plt.bar(enum, standardDeviations, color=palette)
@@ -494,23 +484,24 @@ class PostProcessing(BaseStep):
         
         # Create palette
         palette = sns.color_palette('muted', len(topics))
+        
 
         # Load topic labels if possible
         labels = [ self.__labels[i] for i in topics ] if isinstance(self.__labels, list) else topics
 
-        # Create line chart
-        plt.figure(figsize=(8,5))
-        for i in range(len(topics)):
-            plt.plot(months, popularitiesByMonth[i], marker='', color=palette[i], linewidth=1, label=labels[i])
-        self.__saveChart('Topic Popularity', self.__getXTicks(months), 'results/General-Popularity-Line-Chart.png')
-
         # Create stacked chart
+        plt.rcParams['xtick.labelbottom'] = False
+        plt.rcParams['xtick.labeltop'] = True
+        
         plt.figure(figsize=(8,5))
         plt.stackplot(months, popularitiesByMonth, labels=labels, colors=palette)
         plt.margins(0,0)
         self.__saveChart('Topic Popularity', self.__getXTicks(months), 'results/General-Popularity-Stacked-Chart.png')
 
         # Create bar chart
+        plt.rcParams['xtick.labelbottom'] = True
+        plt.rcParams['xtick.labeltop'] = False
+
         plt.figure(figsize=(8,5))
         enum = [x for x, _ in enumerate(labels)]
         plt.bar(enum, standardDeviations, color=palette)
@@ -525,15 +516,15 @@ class PostProcessing(BaseStep):
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         self.__countEmpty = 0
         
-        self.__model = tp.LDAModel.load(self.__modelFile)
+        # self.__model = tp.LDAModel.load(self.__modelFile)
         # self.__extractTopics()
         self.__loadLabeledTopics()
 
         self.__createCoherenceChart()
         self.__createPerplexityChart()
 
-        self.__computeGeneralPopularity()
+        # self.__computeGeneralPopularity()
         self.__createGeneralCharts()
         
-        self.__computeUserPopularity()
+        # self.__computeUserPopularity()
         self.__createUserCharts()
