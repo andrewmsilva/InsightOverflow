@@ -387,7 +387,6 @@ class PostProcessing(BaseStep):
             monthsCount = len(userDf.date.unique())
             if monthsCount >= 12:
                 candidates.append(user)
-                print(f'    User {user}: {monthsCount}')
         
         return candidates
     
