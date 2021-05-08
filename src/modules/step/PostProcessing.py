@@ -35,7 +35,7 @@ class PostProcessing(BaseStep):
         self.__posts = Posts(preProcessed=True, memory=False, splitted=True)
 
         self.__topicsFile = 'results/topics.csv'
-        self.__labaledTopicsFile = 'results/labeled-topics.csv'
+        self.__labeledTopicsFile = 'results/labeled-topics.csv'
         self.__topicsFields = ['topic', 'label', 'words']
         self.__labels = None
 
@@ -77,7 +77,7 @@ class PostProcessing(BaseStep):
     
     def __loadLabeledTopics(self):
         try:
-            df = pd.read_csv(self.__labaledTopicsFile, header=0)
+            df = pd.read_csv(self.__labeledTopicsFile, header=0)
             self.__labels = df.label.tolist()
         except:
             pass
@@ -103,7 +103,7 @@ class PostProcessing(BaseStep):
         ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
         fig.colorbar(surface, shrink=0.5, aspect=5)
 
-        fig.suptitle('Coherence by iterations and number of topics\nBest experiment: iterations={} topics={} coherence={:.4f}'.format(Y_max, X_max, Z_max))
+        fig.suptitle('Best experiment: iterations={} topics={} coherence={:.4f}'.format(Y_max, X_max, Z_max))
         fig.tight_layout()
 
         ax.set_xlabel('Number of topics')
@@ -379,29 +379,27 @@ class PostProcessing(BaseStep):
         plt.savefig(path, dpi=600)
         plt.clf()
     
-    def __getUsersWithAtLeastOneYear(self, df):
-        candidates = []
-        users = df.user.unique()
-        for user in users:
-            userDf = df.loc[df.user == user]
-            monthsCount = len(userDf.date.unique())
-            if monthsCount >= 12:
-                candidates.append(user)
-        
-        return candidates
-    
     def __createUserCharts(self):
         print('  Creating user popularity charts')
         
         originalPopularityDf = pd.read_csv(self.__userPopularityFile, header=0)
         originalLoyaltyDf = pd.read_csv(self.__userLoyaltyFile, header=0)
+        users = originalLoyaltyDf.user.unique()
 
-        users = self.__getUsersWithAtLeastOneYear(originalPopularityDf)
-        print(f'    Users with at least one year of contribution: {len(users)}')
+        count = 0
+        random.seed(0)
+        random.shuffle(users)
+        for user in users:
+            # Stop 10 users was analyzed
+            if count == 10:
+                break
 
-        random.seed(10)
-        for user in random.sample(users, 5):
+            # Skip user if his contribution ir lower than one year
             popularityDf = originalPopularityDf.loc[originalPopularityDf.user == user]
+            if len(popularityDf.date.unique()) < 12 :
+                continue
+            
+            count += 1
             loyaltyDf = originalLoyaltyDf.loc[originalLoyaltyDf.user == user]
             months = popularityDf.date.unique()
 
