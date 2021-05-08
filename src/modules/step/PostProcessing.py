@@ -42,12 +42,16 @@ class PostProcessing(BaseStep):
         self.__generalPopularityFile = 'results/general-popularity.csv'
         self.__generalPopularityFields = ['topic', 'date', 'popularity']
         self.__generalLoyaltyFile = 'results/general-loyalty.csv'
-        self.__generalLoyaltyFields = ['topic', 'mean', 'variance', 'standardDeviation', 'trend']
+        self.__generalLoyaltyFields = ['topic', 'mean', 'variance', 'standardDeviation']
+        self.__generalTrendsFile = 'results/general-trends.csv'
+        self.__generalTrendsFields = ['topic', 'popularity']
 
         self.__userPopularityFile = 'results/user-popularity.csv'
         self.__userPopularityFields = ['user'] + self.__generalPopularityFields
         self.__userLoyaltyFile = 'results/user-loyalty.csv'
         self.__userLoyaltyFields = ['user'] + self.__generalLoyaltyFields
+        self.__userTrendsFile = 'results/user-trends.csv'
+        self.__userTrendsFields = ['user'] + self.__generalTrendsFields
     
     def __createCSV(self, csvName, fields):
         with open(csvName, 'w', newline='') as csvFile:
@@ -111,37 +115,6 @@ class PostProcessing(BaseStep):
         ax.set_zlabel('Coherence')
 
         plt.savefig('results/Coherence-Chart.png', dpi=300)
-        plt.clf()
-    
-    def __createPerplexityChart(self):
-        print('  Creating perplexity chart')
-
-        months = self.__experiments['iterations'].tolist()
-        popularities = self.__experiments['num_topics'].tolist()
-        Z = self.__experiments['perplexity'].tolist()
-
-        Z_max = min(Z)
-        index = Z.index(Z_max)
-        X_max = months[index]
-        Y_max = popularities[index]
-
-        fig = plt.figure(figsize=(8,5))
-        ax = fig.gca(projection='3d')
-        surface = ax.plot_trisurf(months, popularities, Z, cmap=cm.coolwarm, linewidth=0)
-
-        ax.zaxis.set_major_locator(LinearLocator(10))
-        ax.zaxis.set_major_formatter(FormatStrFormatter('%d'))
-        ax.xaxis.set_major_formatter(FormatStrFormatter('%d'))
-        fig.colorbar(surface, shrink=0.5, aspect=5)
-
-        fig.suptitle('Perplexity by iterations and number of topics\nBest experiment: iterations={} topics={} perplexity={:.0f}'.format(X_max, Y_max, Z_max))
-        fig.tight_layout()
-
-        ax.set_xlabel('Iterations')
-        ax.set_ylabel('Number of topics')
-        ax.set_zlabel('Perplexity')
-
-        plt.savefig('results/Perplexity-Chart.png', dpi=300)
         plt.clf()
     
     def __normalizeTopics(self, topics):
@@ -241,12 +214,15 @@ class PostProcessing(BaseStep):
         # Initialize CSVs
         self.__createCSV(self.__userPopularityFile, self.__userPopularityFields)
         self.__createCSV(self.__userLoyaltyFile, self.__userLoyaltyFields)
+        self.__createCSV(self.__userTrendsFile, self.__userTrendsFields)
 
         # Finish relative popularity calculation
         computedCount = 0
         for user in calculation.keys():
             popularities = {}
+            trendPopularityCalculation = self.__initCalculator()
             for date in calculation[user].keys():
+                trendPopularityCalculation['count'] += calculation[user][date]['count']
                 for topic in range(self.__model.k):
                     # Check if metric must be computed
                     if calculation[user][date]['weightSum'][topic] == 0:
@@ -255,6 +231,7 @@ class PostProcessing(BaseStep):
                         continue
                     
                     # Compute populatities
+                    trendPopularityCalculation['weightSum'][topic] += calculation[user][date]['weightSum'][topic]
                     popularity = calculation[user][date]['weightSum'][topic] / calculation[user][date]['count']
                     computedCount += 1
 
@@ -263,7 +240,7 @@ class PostProcessing(BaseStep):
                         popularities[topic] = []
                     popularities[topic].append(popularity)
 
-                    # Insert popularity to database]
+                    # Insert popularity to csv
                     self.__appendToCSV(
                         self.__userPopularityFile,
                         {
@@ -273,6 +250,26 @@ class PostProcessing(BaseStep):
                             'popularity': popularity,
                         }
                     )
+            
+            # Insert trend popularity to csv
+            trendPopularities = [
+                trendPopularityCalculation['weightSum'][topic] / trendPopularityCalculation['count'] 
+                for topic in range(self.__model.k)
+            ]
+            for topic in range(self.__model.k):
+                if trendPopularityCalculation['weightSum'][topic] > 0:
+                    computedCount += 1
+                    popularity = trendPopularityCalculation['weightSum'][topic] / trendPopularityCalculation['count']
+                    self.__appendToCSV(
+                        self.__userTrendsFile,
+                        {
+                            'user': user,
+                            'topic': topic,
+                            'popularity': popularity,
+                        }
+                    )
+            
+            # Compute loyalty
             popularities = { topic: popularities[topic] for topic in sorted(popularities.keys()) }
             self.__saveLoyalty(len(calculation[user].keys()), popularities, self.__userLoyaltyFile, user)
             computedCount += 4
@@ -319,11 +316,14 @@ class PostProcessing(BaseStep):
         # Initialize CSVs
         self.__createCSV(self.__generalPopularityFile, self.__generalPopularityFields)
         self.__createCSV(self.__generalLoyaltyFile, self.__generalLoyaltyFields)
+        self.__createCSV(self.__generalTrendsFile, self.__generalTrendsFields)
 
         # Finish relative popularity calculation
         popularities = {}
+        trendPopularityCalculation = self.__initCalculator()
         computedCount = 0
         for date in calculation.keys():
+            trendPopularityCalculation['count'] += calculation[date]['count']
             for topic in range(self.__model.k):
                 # Check if metric must be computed
                 if calculation[date]['weightSum'][topic] == 0:
@@ -332,6 +332,7 @@ class PostProcessing(BaseStep):
                     continue
                 
                 # Compute populatities
+                trendPopularityCalculation['weightSum'][topic] += calculation[date]['weightSum'][topic]
                 popularity = calculation[date]['weightSum'][topic] / calculation[date]['count']
                 computedCount += 1
 
@@ -340,7 +341,7 @@ class PostProcessing(BaseStep):
                     popularities[topic] = []
                 popularities[topic].append(popularity)
 
-                # Insert popularity to database
+                # Insert popularity to csv
                 self.__appendToCSV(
                     self.__generalPopularityFile,
                     {
@@ -349,6 +350,25 @@ class PostProcessing(BaseStep):
                         'popularity': popularity,
                     }
                 )
+        
+        # Insert trend popularity to csv
+        trendPopularities = [
+            trendPopularityCalculation['weightSum'][topic] / trendPopularityCalculation['count'] 
+            for topic in range(self.__model.k)
+        ]
+        for topic in range(self.__model.k):
+            if trendPopularityCalculation['weightSum'][topic] > 0:
+                computedCount += 1
+                popularity = trendPopularityCalculation['weightSum'][topic] / trendPopularityCalculation['count']
+                self.__appendToCSV(
+                    self.__generalTrendsFile,
+                    {
+                        'topic': topic,
+                        'popularity': popularity,
+                    }
+                )
+
+        # Compute loyalty
         popularities = { topic: popularities[topic] for topic in sorted(popularities.keys()) }
         self.__saveLoyalty(len(calculation.keys()), popularities, self.__generalLoyaltyFile)
         computedCount += 4
@@ -511,15 +531,14 @@ class PostProcessing(BaseStep):
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         self.__countEmpty = 0
         
-        # self.__model = tp.LDAModel.load(self.__modelFile)
+        self.__model = tp.LDAModel.load(self.__modelFile)
         # self.__extractTopics()
         self.__loadLabeledTopics()
 
         self.__createCoherenceChart()
-        self.__createPerplexityChart()
 
-        # self.__computeGeneralPopularity()
+        self.__computeGeneralPopularity()
         self.__createGeneralCharts()
         
-        # self.__computeUserPopularity()
+        self.__computeUserPopularity()
         self.__createUserCharts()
