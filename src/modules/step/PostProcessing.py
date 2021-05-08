@@ -392,7 +392,7 @@ class PostProcessing(BaseStep):
         return xticks
     
     def __saveChart(self, yLabel, xTicks, path, legends=True):       
-        plt.ylabel(yLabel)
+        if isinstance(yLabel, str): plt.ylabel(yLabel)
         if legends: plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=4, fontsize='small',  borderaxespad=0, labelspacing=0.8)
         if isinstance(xTicks, Iterable): plt.xticks(xTicks, rotation=45, ha='left', position=(1,1))
         plt.tight_layout()
@@ -404,6 +404,7 @@ class PostProcessing(BaseStep):
         
         originalPopularityDf = pd.read_csv(self.__userPopularityFile, header=0)
         originalLoyaltyDf = pd.read_csv(self.__userLoyaltyFile, header=0)
+        originalTrendsDf = pd.read_csv(self.__userTrendsFile, header=0)
         users = originalLoyaltyDf.user.unique()
 
         count = 0
@@ -421,10 +422,12 @@ class PostProcessing(BaseStep):
             
             count += 1
             loyaltyDf = originalLoyaltyDf.loc[originalLoyaltyDf.user == user]
+            trendsDf = originalTrendsDf.loc[originalTrendsDf.user == user]
             months = popularityDf.date.unique()
 
             popularitiesByMonth = []
             standardDeviations = []
+            trendPopularities = []
             topics = []
             for topic in range(int(self.__experiment.num_topics)):
                 popularities = []
@@ -444,14 +447,18 @@ class PostProcessing(BaseStep):
                 if topic in topics:
                     loyaltyRows = loyaltyDf.loc[loyaltyDf.topic == topic]
                     standardDeviations.append(loyaltyRows.iloc[-1].standardDeviation)
+
+                    trendsRows = trendsDf.loc[trendsDf.topic == topic]
+                    trendPopularities.append(trendsRows.iloc[-1].popularity)
             
             # Create palette
-            palette = sns.color_palette('muted', len(topics))
+            palette = sns.color_palette('muted', 10) + sns.color_palette('colorblind', 10) + sns.color_palette('dark', 10)
 
             # Load topic labels if possible
             labels = [ self.__labels[i] for i in topics ] if isinstance(self.__labels, list) else topics
+            enum = [x for x, _ in enumerate(labels)]
 
-            # Create Stacked chart
+            # Create popularity stacked chart
             plt.rcParams['xtick.labelbottom'] = False
             plt.rcParams['xtick.labeltop'] = True
 
@@ -460,26 +467,34 @@ class PostProcessing(BaseStep):
             plt.margins(0,0)
             self.__saveChart('Topic Popularity', self.__getXTicks(months), f'results/User-{user}-Popularity-Stacked-Chart.png')
 
-            # Create bar chart
+            # Create loayalty bar chart
             plt.rcParams['xtick.labelbottom'] = True
             plt.rcParams['xtick.labeltop'] = False
 
             plt.figure(figsize=(8,5))
-            enum = [x for x, _ in enumerate(labels)]
             plt.bar(enum, standardDeviations, color=palette)
             plt.xticks(enum, labels, rotation=45, ha='right')
             plt.margins(0,0)
             self.__saveChart('Standard deviation', None, f'results/User-{user}-Loyalty-Bar-Chart.png', False)
+
+            # Create trend popularity bar chart
+            plt.figure(figsize=(8,5))
+            plt.bar(enum, trendPopularities, color=palette)
+            plt.xticks(enum, labels, rotation=45, ha='right')
+            plt.margins(0,0)
+            self.__saveChart('Trend popularity', None, f'results/User-{user}-Trends-Bar-Chart.png', False)
 
     def __createGeneralCharts(self):
         print('  Creating general popularity charts')
 
         popularityDf = pd.read_csv(self.__generalPopularityFile, header=0)
         loyaltyDf = pd.read_csv(self.__generalLoyaltyFile, header=0)
+        trendsDf = pd.read_csv(self.__generalTrendsFile, header=0)
         months = popularityDf.date.unique()
 
         popularitiesByMonth = []
         standardDeviations = []
+        trendPopularities = []
         topics = []
         for topic in range(int(self.__experiment.num_topics)):
             popularities = []
@@ -497,14 +512,18 @@ class PostProcessing(BaseStep):
             if topic in topics:
                 loyaltyRows = loyaltyDf.loc[loyaltyDf.topic == topic]
                 standardDeviations.append(loyaltyRows.iloc[-1].standardDeviation)
+
+                trendsRows = trendsDf.loc[trendsDf.topic == topic]
+                trendPopularities.append(trendsRows.iloc[-1].popularity)
         
         # Create palette
-        palette = sns.color_palette('muted', len(topics))
+        palette = sns.color_palette('muted', 10) + sns.color_palette('colorblind', 10) + sns.color_palette('dark', 10)
 
         # Load topic labels if possible
         labels = [ self.__labels[i] for i in topics ] if isinstance(self.__labels, list) else topics
+        enum = [x for x, _ in enumerate(labels)]
 
-        # Create stacked chart
+        # Create popularity stacked chart
         plt.rcParams['xtick.labelbottom'] = False
         plt.rcParams['xtick.labeltop'] = True
         
@@ -513,16 +532,22 @@ class PostProcessing(BaseStep):
         plt.margins(0,0)
         self.__saveChart('Topic Popularity', self.__getXTicks(months), 'results/General-Popularity-Stacked-Chart.png')
 
-        # Create bar chart
+        # Create loyalty bar chart
         plt.rcParams['xtick.labelbottom'] = True
         plt.rcParams['xtick.labeltop'] = False
 
         plt.figure(figsize=(8,5))
-        enum = [x for x, _ in enumerate(labels)]
         plt.bar(enum, standardDeviations, color=palette)
         plt.xticks(enum, labels, rotation=45, ha='right')
         plt.margins(0,0)
         self.__saveChart('Standard deviation', None, 'results/General-Loyalty-Bar-Chart.png', False)
+
+        # Create trend popularity bar chart
+        plt.figure(figsize=(8,5))
+        plt.bar(enum, trendPopularities, color=palette)
+        plt.xticks(enum, labels, rotation=45, ha='right')
+        plt.margins(0,0)
+        self.__saveChart('Trend popularity', None, 'results/General-Trends-Bar-Chart.png', False)
     
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
