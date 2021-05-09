@@ -548,6 +548,17 @@ class PostProcessing(BaseStep):
         plt.xticks(enum, labels, rotation=45, ha='right')
         plt.margins(0,0)
         self.__saveChart('Trend popularity', None, 'results/General-Trends-Bar-Chart.png', False)
+
+        # Create trend lines
+        for i in range(len(popularitiesByMonth)):
+            topic = topics[i]
+            popularities = popularitiesByMonth[i]
+
+            plt.figure(figsize=(8,5))
+            plt.plot(popularities, color=palette[i])
+            plt.margins(0,0)
+            plt.axis('off')
+            self.__saveChart(None, None, f'results/Topic-{topic}-Evolution-Line-Chart.png', False)
     
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
@@ -556,14 +567,14 @@ class PostProcessing(BaseStep):
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         self.__countEmpty = 0
         
-        self.__model = tp.LDAModel.load(self.__modelFile)
-        self.__extractTopics()
+        # self.__model = tp.LDAModel.load(self.__modelFile)
+        # self.__extractTopics()
         self.__loadLabeledTopics()
 
         self.__createCoherenceChart()
 
-        self.__computeGeneralPopularity()
+        # self.__computeGeneralPopularity()
         self.__createGeneralCharts()
         
-        self.__computeUserPopularity()
+        # self.__computeUserPopularity()
         self.__createUserCharts()
