@@ -41,15 +41,15 @@ class PostProcessing(BaseStep):
 
         self.__generalPopularityFile = 'results/general-popularity.csv'
         self.__generalPopularityFields = ['topic', 'date', 'popularity']
-        self.__generalLoyaltyFile = 'results/general-loyalty.csv'
-        self.__generalLoyaltyFields = ['topic', 'mean', 'variance', 'standardDeviation']
+        self.__generalDriftFile = 'results/general-drift.csv'
+        self.__generalDriftFields = ['topic', 'mean', 'variance', 'drift']
         self.__generalTrendsFile = 'results/general-trends.csv'
         self.__generalTrendsFields = ['topic', 'popularity']
 
         self.__userPopularityFile = 'results/user-popularity.csv'
         self.__userPopularityFields = ['user'] + self.__generalPopularityFields
-        self.__userLoyaltyFile = 'results/user-loyalty.csv'
-        self.__userLoyaltyFields = ['user'] + self.__generalLoyaltyFields
+        self.__userDriftFile = 'results/user-drift.csv'
+        self.__userDriftFields = ['user'] + self.__generalDriftFields
         self.__userTrendsFile = 'results/user-trends.csv'
         self.__userTrendsFields = ['user'] + self.__generalTrendsFields
     
@@ -137,7 +137,7 @@ class PostProcessing(BaseStep):
     def __initCalculator(self):
         return {'count': 0, 'weightSum': [0]*self.__model.k}
     
-    def __saveLoyalty(self, datesCount, popularities, csvName, user=None):
+    def __saveDrift(self, datesCount, popularities, csvName, user=None):
         for topic in popularities.keys():
             lengthDifference = datesCount - len(popularities[topic])
 
@@ -146,7 +146,7 @@ class PostProcessing(BaseStep):
 
             mean = statistics.mean(popularities[topic])
             variance = statistics.pvariance(popularities[topic], mu=mean)
-            standardDeviation = variance**0.5
+            drift = variance**0.5
 
             if not user:
                 self.__appendToCSV(
@@ -155,7 +155,7 @@ class PostProcessing(BaseStep):
                         'topic': topic,
                         'mean': mean,
                         'variance': variance,
-                        'standardDeviation': standardDeviation,
+                        'drift': drift,
                     }
                 )
             else:
@@ -166,7 +166,7 @@ class PostProcessing(BaseStep):
                     'topic': topic,
                     'mean': mean,
                     'variance': variance,
-                    'standardDeviation': standardDeviation,
+                    'drift': drift,
                 }
             )
     
@@ -213,7 +213,7 @@ class PostProcessing(BaseStep):
 
         # Initialize CSVs
         self.__createCSV(self.__userPopularityFile, self.__userPopularityFields)
-        self.__createCSV(self.__userLoyaltyFile, self.__userLoyaltyFields)
+        self.__createCSV(self.__userDriftFile, self.__userDriftFields)
         self.__createCSV(self.__userTrendsFile, self.__userTrendsFields)
 
         # Finish relative popularity calculation
@@ -269,9 +269,9 @@ class PostProcessing(BaseStep):
                         }
                     )
             
-            # Compute loyalty
+            # Compute drift
             popularities = { topic: popularities[topic] for topic in sorted(popularities.keys()) }
-            self.__saveLoyalty(len(calculation[user].keys()), popularities, self.__userLoyaltyFile, user)
+            self.__saveDrift(len(calculation[user].keys()), popularities, self.__userDriftFile, user)
             computedCount += 4
         
         print('    Computed metrics:', computedCount)
@@ -315,7 +315,7 @@ class PostProcessing(BaseStep):
 
         # Initialize CSVs
         self.__createCSV(self.__generalPopularityFile, self.__generalPopularityFields)
-        self.__createCSV(self.__generalLoyaltyFile, self.__generalLoyaltyFields)
+        self.__createCSV(self.__generalDriftFile, self.__generalDriftFields)
         self.__createCSV(self.__generalTrendsFile, self.__generalTrendsFields)
 
         # Finish relative popularity calculation
@@ -368,9 +368,9 @@ class PostProcessing(BaseStep):
                     }
                 )
 
-        # Compute loyalty
+        # Compute drift
         popularities = { topic: popularities[topic] for topic in sorted(popularities.keys()) }
-        self.__saveLoyalty(len(calculation.keys()), popularities, self.__generalLoyaltyFile)
+        self.__saveDrift(len(calculation.keys()), popularities, self.__generalDriftFile)
         computedCount += 4
         
         print('    Computed metrics:', computedCount)
@@ -403,9 +403,9 @@ class PostProcessing(BaseStep):
         print('  Creating user popularity charts')
         
         originalPopularityDf = pd.read_csv(self.__userPopularityFile, header=0)
-        originalLoyaltyDf = pd.read_csv(self.__userLoyaltyFile, header=0)
+        originaldriftDf = pd.read_csv(self.__userDriftFile, header=0)
         originalTrendsDf = pd.read_csv(self.__userTrendsFile, header=0)
-        users = originalLoyaltyDf.user.unique()
+        users = originaldriftDf.user.unique()
 
         count = 0
         random.seed(0)
@@ -417,16 +417,16 @@ class PostProcessing(BaseStep):
 
             # Skip user if his contribution ir lower than one year
             popularityDf = originalPopularityDf.loc[originalPopularityDf.user == user]
-            if len(popularityDf.date.unique()) < 12 :
+            if len(popularityDf.date.unique()) < 12:
                 continue
             
             count += 1
-            loyaltyDf = originalLoyaltyDf.loc[originalLoyaltyDf.user == user]
+            driftDf = originaldriftDf.loc[originaldriftDf.user == user]
             trendsDf = originalTrendsDf.loc[originalTrendsDf.user == user]
             months = popularityDf.date.unique()
 
             popularitiesByMonth = []
-            standardDeviations = []
+            drifts = []
             trendPopularities = []
             topics = []
             for topic in range(int(self.__experiment.num_topics)):
@@ -445,8 +445,8 @@ class PostProcessing(BaseStep):
                     topics.append(topic)
                 
                 if topic in topics:
-                    loyaltyRows = loyaltyDf.loc[loyaltyDf.topic == topic]
-                    standardDeviations.append(loyaltyRows.iloc[-1].standardDeviation)
+                    driftRows = driftDf.loc[driftDf.topic == topic]
+                    drifts.append(driftRows.iloc[-1].drift)
 
                     trendsRows = trendsDf.loc[trendsDf.topic == topic]
                     trendPopularities.append(trendsRows.iloc[-1].popularity)
@@ -472,10 +472,10 @@ class PostProcessing(BaseStep):
             plt.rcParams['xtick.labeltop'] = False
 
             plt.figure(figsize=(8,5))
-            plt.bar(enum, standardDeviations, color=palette)
+            plt.bar(enum, drifts, color=palette)
             plt.xticks(enum, labels, rotation=45, ha='right')
             plt.margins(0,0)
-            self.__saveChart('Standard deviation', None, f'results/User-{user}-Loyalty-Bar-Chart.png', False)
+            self.__saveChart('Popularity drift', None, f'results/User-{user}-Drift-Bar-Chart.png', False)
 
             # Create trend popularity bar chart
             plt.figure(figsize=(8,5))
@@ -488,12 +488,12 @@ class PostProcessing(BaseStep):
         print('  Creating general popularity charts')
 
         popularityDf = pd.read_csv(self.__generalPopularityFile, header=0)
-        loyaltyDf = pd.read_csv(self.__generalLoyaltyFile, header=0)
+        driftDf = pd.read_csv(self.__generalDriftFile, header=0)
         trendsDf = pd.read_csv(self.__generalTrendsFile, header=0)
         months = popularityDf.date.unique()
 
         popularitiesByMonth = []
-        standardDeviations = []
+        drifts = []
         trendPopularities = []
         topics = []
         for topic in range(int(self.__experiment.num_topics)):
@@ -510,8 +510,8 @@ class PostProcessing(BaseStep):
                 topics.append(topic)
             
             if topic in topics:
-                loyaltyRows = loyaltyDf.loc[loyaltyDf.topic == topic]
-                standardDeviations.append(loyaltyRows.iloc[-1].standardDeviation)
+                driftRows = driftDf.loc[driftDf.topic == topic]
+                drifts.append(driftRows.iloc[-1].drift)
 
                 trendsRows = trendsDf.loc[trendsDf.topic == topic]
                 trendPopularities.append(trendsRows.iloc[-1].popularity)
@@ -532,15 +532,15 @@ class PostProcessing(BaseStep):
         plt.margins(0,0)
         self.__saveChart('Topic Popularity', self.__getXTicks(months), 'results/General-Popularity-Stacked-Chart.png')
 
-        # Create loyalty bar chart
+        # Create drift bar chart
         plt.rcParams['xtick.labelbottom'] = True
         plt.rcParams['xtick.labeltop'] = False
 
         plt.figure(figsize=(8,5))
-        plt.bar(enum, standardDeviations, color=palette)
+        plt.bar(enum, drifts, color=palette)
         plt.xticks(enum, labels, rotation=45, ha='right')
         plt.margins(0,0)
-        self.__saveChart('Standard deviation', None, 'results/General-Loyalty-Bar-Chart.png', False)
+        self.__saveChart('Popularity drift', None, 'results/General-Drift-Bar-Chart.png', False)
 
         # Create trend popularity bar chart
         plt.figure(figsize=(8,5))
