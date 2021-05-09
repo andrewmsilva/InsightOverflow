@@ -557,14 +557,13 @@ class PostProcessing(BaseStep):
         self.__countEmpty = 0
         
         self.__model = tp.LDAModel.load(self.__modelFile)
-        self.__model.summary()
-        # self.__extractTopics()
-        # self.__loadLabeledTopics()
+        self.__extractTopics()
+        self.__loadLabeledTopics()
 
-        # self.__createCoherenceChart()
+        self.__createCoherenceChart()
 
-        # self.__computeGeneralPopularity()
-        # self.__createGeneralCharts()
+        self.__computeGeneralPopularity()
+        self.__createGeneralCharts()
         
-        # self.__computeUserPopularity()
-        # self.__createUserCharts()
+        self.__computeUserPopularity()
+        self.__createUserCharts()
