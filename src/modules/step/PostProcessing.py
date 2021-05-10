@@ -554,7 +554,7 @@ class PostProcessing(BaseStep):
             topic = topics[i]
             popularities = popularitiesByMonth[i]
 
-            plt.figure(figsize=(8,5))
+            plt.figure(figsize=(8,2))
             plt.plot(popularities, color=palette[i], linewidth=2)
             plt.margins(0,0)
             plt.axis('off')
