@@ -554,8 +554,8 @@ class PostProcessing(BaseStep):
             topic = topics[i]
             popularities = popularitiesByMonth[i]
 
-            plt.figure(figsize=(8,2))
-            plt.plot(popularities, color=palette[i], linewidth=2)
+            plt.figure(figsize=(12, 2))
+            plt.plot(popularities, color=palette[i], linewidth=6)
             plt.margins(0,0)
             plt.axis('off')
             self.__saveChart(None, None, f'results/Topic-{topic}-Evolution-Line-Chart.png', False)
