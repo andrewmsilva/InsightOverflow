@@ -556,9 +556,10 @@ class PostProcessing(BaseStep):
 
             plt.figure(figsize=(12, 2))
             plt.plot(popularities, color=palette[i], linewidth=12)
-            plt.margins(0,0)
             plt.axis('off')
-            self.__saveChart(None, None, f'results/Topic-{topic}-Evolution-Line-Chart.png', False)
+            plt.tight_layout(pad=0.1, w_pad=0.1, h_pad=0.1)
+            plt.savefig(f'results/Topic-{topic}-Evolution-Line-Chart.png', dpi=100)
+            plt.clf()
     
     def _process(self):
         self.__experiments = pd.read_csv(self.__experimentsFile, index_col=0, header=0)
