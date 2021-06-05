@@ -40,7 +40,7 @@ class PostProcessing(BaseStep):
         self.__labels = None
 
         self.__generalPopularityFile = 'results/general-popularity.csv'
-        self.__generalPopularityFields = ['topic', 'date', 'popularity']
+        self.__generalPopularityFields = ['topic', 'semester', 'popularity']
         self.__generalDriftFile = 'results/general-drift.csv'
         self.__generalDriftFields = ['topic', 'mean', 'variance', 'drift']
         self.__generalTrendsFile = 'results/general-trends.csv'
@@ -118,6 +118,9 @@ class PostProcessing(BaseStep):
         plt.clf()
     
     def __normalizeTopics(self, topics):
+        if len(topics) == 0:
+            return []
+        
         normalizer = 1 / float( sum([ weight for _, weight in topics ]) )
         return [ (topic, weight*normalizer) for topic, weight in topics ]
     
@@ -126,20 +129,15 @@ class PostProcessing(BaseStep):
         topics = list(zip(range(len(topicDistribution)), topicDistribution))
         topics.sort(key=lambda value: value[1], reverse=True)
 
-        # Check if all topics are below the threshold
-        if topics[0][1] < threshold:
-            self.__countEmpty += 1
-            return self.__normalizeTopics([ (topic, weight) for topic, weight in topics if weight == topics[0][1] ])
-
         # Remove topics below threshold and normalize
         return self.__normalizeTopics([ (topic, weight) for topic, weight in topics if weight >= threshold ])
 
     def __initCalculator(self):
         return {'count': 0, 'weightSum': [0]*self.__model.k}
     
-    def __saveDrift(self, datesCount, popularities, csvName, user=None):
+    def __saveDrift(self, semesterCount, popularities, csvName, user=None):
         for topic in popularities.keys():
-            lengthDifference = datesCount - len(popularities[topic])
+            lengthDifference = semesterCount - len(popularities[topic])
 
             if lengthDifference > 0:
                 popularities[topic] = [0]*lengthDifference + popularities[topic]
@@ -184,28 +182,33 @@ class PostProcessing(BaseStep):
                 break
             # Compute the metrics if content is not empty
             elif len(post['content']) > 0:
-                # Get data
-                content = post['content']
-                user = post['user']
-                date = post['date'][:7]
-
-                # Adjust dict of users and dates
-                if not user in calculation.keys():
-                    calculation[user] = {date: self.__initCalculator()}
-                elif not date in calculation[user].keys():
-                    calculation[user][date] = self.__initCalculator()
-                
-                # Increment posts counter
-                calculation[user][date]['count'] += 1
-                
-                # Get post topics
+                # Get topics
                 index += 1
                 content = self.__model.docs[index]
                 topics = self.__getTopics(content.get_topic_dist())
 
+                # Check if post has topics
+                if len(topics) == 0:
+                    self.__countEmpty += 1
+                    continue
+
+                # Get data
+                user = post['user']
+                year, month, day = post['date'].split('-')
+                semester = f'{year}.{1 if int(month) < 7 else 2}'
+
+                # Adjust dict of users and semesters
+                if not user in calculation.keys():
+                    calculation[user] = {semester: self.__initCalculator()}
+                elif not semester in calculation[user].keys():
+                    calculation[user][semester] = self.__initCalculator()
+                
+                # Increment posts counter
+                calculation[user][semester]['count'] += 1
+
                 # Sum weight for each topic
                 for topic, weight in topics:
-                    calculation[user][date]['weightSum'][topic] += weight
+                    calculation[user][semester]['weightSum'][topic] += weight
         
         # Print some results
         print('    Number of users:', len(calculation.keys()))
@@ -221,18 +224,18 @@ class PostProcessing(BaseStep):
         for user in calculation.keys():
             popularities = {}
             trendPopularityCalculation = self.__initCalculator()
-            for date in calculation[user].keys():
-                trendPopularityCalculation['count'] += calculation[user][date]['count']
+            for semester in calculation[user].keys():
+                trendPopularityCalculation['count'] += calculation[user][semester]['count']
                 for topic in range(self.__model.k):
                     # Check if metric must be computed
-                    if calculation[user][date]['weightSum'][topic] == 0:
+                    if calculation[user][semester]['weightSum'][topic] == 0:
                         if topic in popularities.keys():
                             popularities[topic].append(0)
                         continue
                     
                     # Compute populatities
-                    trendPopularityCalculation['weightSum'][topic] += calculation[user][date]['weightSum'][topic]
-                    popularity = calculation[user][date]['weightSum'][topic] / calculation[user][date]['count']
+                    trendPopularityCalculation['weightSum'][topic] += calculation[user][semester]['weightSum'][topic]
+                    popularity = calculation[user][semester]['weightSum'][topic] / calculation[user][semester]['count']
                     computedCount += 1
 
                     # Append relative popularity to compute variance
@@ -246,7 +249,7 @@ class PostProcessing(BaseStep):
                         {
                             'user': user,
                             'topic': topic,
-                            'date': date,
+                            'semester': semester,
                             'popularity': popularity,
                         }
                     )
@@ -290,25 +293,30 @@ class PostProcessing(BaseStep):
                 break
             # Compute the metrics if content is not empty
             elif len(post['content']) > 0:
-                # Get data
-                content = post['content']
-                date = post['date'][:7]
-
-                # Adjust dict of dates
-                if not date in calculation.keys():
-                    calculation[date] = self.__initCalculator()
-                
-                # Increment posts counter
-                calculation[date]['count'] += 1
-                
-                # Get post topics
+                # Get topics
                 index += 1
                 content = self.__model.docs[index]
                 topics = self.__getTopics(content.get_topic_dist())
 
+                # Check if post has topics
+                if len(topics) == 0:
+                    self.__countEmpty += 1
+                    continue
+
+                # Get semester
+                year, month, day = post['date'].split('-')
+                semester = f'{year}.{1 if int(month) < 7 else 2}'
+
+                # Adjust dict of semesters
+                if not semester in calculation.keys():
+                    calculation[semester] = self.__initCalculator()
+                
+                # Increment posts counter
+                calculation[semester]['count'] += 1
+
                 # Sum weight for each topic
                 for topic, weight in topics:
-                    calculation[date]['weightSum'][topic] += weight
+                    calculation[semester]['weightSum'][topic] += weight
         
         # Print some results
         print('    Posts with empty topics:', self.__countEmpty)
@@ -322,18 +330,18 @@ class PostProcessing(BaseStep):
         popularities = {}
         trendPopularityCalculation = self.__initCalculator()
         computedCount = 0
-        for date in calculation.keys():
-            trendPopularityCalculation['count'] += calculation[date]['count']
+        for semester in calculation.keys():
+            trendPopularityCalculation['count'] += calculation[semester]['count']
             for topic in range(self.__model.k):
                 # Check if metric must be computed
-                if calculation[date]['weightSum'][topic] == 0:
+                if calculation[semester]['weightSum'][topic] == 0:
                     if topic in popularities.keys():
                         popularities[topic].append(0)
                     continue
                 
                 # Compute populatities
-                trendPopularityCalculation['weightSum'][topic] += calculation[date]['weightSum'][topic]
-                popularity = calculation[date]['weightSum'][topic] / calculation[date]['count']
+                trendPopularityCalculation['weightSum'][topic] += calculation[semester]['weightSum'][topic]
+                popularity = calculation[semester]['weightSum'][topic] / calculation[semester]['count']
                 computedCount += 1
 
                 # Append relative popularity to compute variance
@@ -346,7 +354,7 @@ class PostProcessing(BaseStep):
                     self.__generalPopularityFile,
                     {
                         'topic': topic,
-                        'date': date,
+                        'semester': semester,
                         'popularity': popularity,
                     }
                 )
@@ -375,18 +383,18 @@ class PostProcessing(BaseStep):
         
         print('    Computed metrics:', computedCount)
     
-    def __getXTicks(self, months):
-        if len(months) <= 20:
-            return months
+    def __getXTicks(self, semesters):
+        if len(semesters) <= 20:
+            return semesters
         
         xticks = []
         count = 0
-        for date in months:
+        for semester in semesters:
             if count == 6:
                    count = 0
             count += 1
             if count == 1:
-                xticks.append(date)
+                xticks.append(semester)
             else:
                 xticks.append('')
         return xticks
@@ -417,13 +425,13 @@ class PostProcessing(BaseStep):
 
             # Skip user if his contribution ir lower than one year
             popularityDf = originalPopularityDf.loc[originalPopularityDf.user == user]
-            if len(popularityDf.date.unique()) < 12:
+            if len(popularityDf.semester.unique()) < 12:
                 continue
             
             count += 1
             driftDf = originaldriftDf.loc[originaldriftDf.user == user]
             trendsDf = originalTrendsDf.loc[originalTrendsDf.user == user]
-            months = popularityDf.date.unique()
+            semesters = popularityDf.semester.unique()
 
             popularitiesByMonth = []
             drifts = []
@@ -431,9 +439,9 @@ class PostProcessing(BaseStep):
             topics = []
             for topic in range(int(self.__experiment.num_topics)):
                 popularities = []
-                for i in range(len(months)):
-                    date = months[i]
-                    popularitiesRows = popularityDf.loc[(popularityDf.date == date) & (popularityDf.topic == topic)]
+                for i in range(len(semesters)):
+                    semester = semesters[i]
+                    popularitiesRows = popularityDf.loc[(popularityDf.semester == semester) & (popularityDf.topic == topic)]
                     
                     if len(popularitiesRows) == 0:
                         popularities.append(0)
@@ -463,9 +471,9 @@ class PostProcessing(BaseStep):
             plt.rcParams['xtick.labeltop'] = True
 
             plt.figure(figsize=(8,5))
-            plt.stackplot(months, popularitiesByMonth, labels=labels, colors=palette)
+            plt.stackplot(semesters, popularitiesByMonth, labels=labels, colors=palette)
             plt.margins(0,0)
-            self.__saveChart('Topic Popularity', self.__getXTicks(months), f'results/User-{user}-Popularity-Stacked-Chart.png')
+            self.__saveChart('Topic Popularity', self.__getXTicks(semesters), f'results/User-{user}-Popularity-Stacked-Chart.png')
 
             # Create loayalty bar chart
             plt.rcParams['xtick.labelbottom'] = True
@@ -490,7 +498,7 @@ class PostProcessing(BaseStep):
         popularityDf = pd.read_csv(self.__generalPopularityFile, header=0)
         driftDf = pd.read_csv(self.__generalDriftFile, header=0)
         trendsDf = pd.read_csv(self.__generalTrendsFile, header=0)
-        months = popularityDf.date.unique()
+        semesters = popularityDf.semester.unique()
 
         popularitiesByMonth = []
         drifts = []
@@ -498,8 +506,8 @@ class PostProcessing(BaseStep):
         topics = []
         for topic in range(int(self.__experiment.num_topics)):
             popularities = []
-            for i in range(len(months)):
-                popularityRows = popularityDf.loc[(popularityDf.date == months[i]) & (popularityDf.topic == topic)]
+            for i in range(len(semesters)):
+                popularityRows = popularityDf.loc[(popularityDf.semester == semesters[i]) & (popularityDf.topic == topic)]
                 if len(popularityRows) == 0:
                     popularities.append(0)
                 else:
@@ -528,9 +536,9 @@ class PostProcessing(BaseStep):
         plt.rcParams['xtick.labeltop'] = True
         
         plt.figure(figsize=(8,5))
-        plt.stackplot(months, popularitiesByMonth, labels=labels, colors=palette)
+        plt.stackplot(semesters, popularitiesByMonth, labels=labels, colors=palette)
         plt.margins(0,0)
-        self.__saveChart('Topic Popularity', self.__getXTicks(months), 'results/General-Popularity-Stacked-Chart.png')
+        self.__saveChart('Topic Popularity', self.__getXTicks(semesters), 'results/General-Popularity-Stacked-Chart.png')
 
         # Create drift bar chart
         plt.rcParams['xtick.labelbottom'] = True
@@ -568,14 +576,14 @@ class PostProcessing(BaseStep):
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         self.__countEmpty = 0
         
-        # self.__model = tp.LDAModel.load(self.__modelFile)
-        # self.__extractTopics()
+        self.__model = tp.LDAModel.load(self.__modelFile)
+        self.__extractTopics()
         self.__loadLabeledTopics()
 
         self.__createCoherenceChart()
 
-        # self.__computeGeneralPopularity()
+        self.__computeGeneralPopularity()
         self.__createGeneralCharts()
         
-        # self.__computeUserPopularity()
+        self.__computeUserPopularity()
         self.__createUserCharts()
