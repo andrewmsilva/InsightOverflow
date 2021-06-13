@@ -383,22 +383,6 @@ class PostProcessing(BaseStep):
         
         print('    Computed metrics:', computedCount)
     
-    def __getXTicks(self, semesters):
-        if len(semesters) <= 20:
-            return semesters
-        
-        xticks = []
-        count = 0
-        for semester in semesters:
-            if count == 6:
-                   count = 0
-            count += 1
-            if count == 1:
-                xticks.append(semester)
-            else:
-                xticks.append('')
-        return xticks
-    
     def __saveChart(self, yLabel, xTicks, path, legends=True):       
         if isinstance(yLabel, str): plt.ylabel(yLabel)
         if legends: plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=4, fontsize='small',  borderaxespad=0, labelspacing=0.8)
@@ -473,7 +457,7 @@ class PostProcessing(BaseStep):
             plt.figure(figsize=(8,5))
             plt.stackplot(semesters, popularitiesByMonth, labels=labels, colors=palette)
             plt.margins(0,0)
-            self.__saveChart('Topic Popularity', self.__getXTicks(semesters), f'results/User-{user}-Popularity-Stacked-Chart.png')
+            self.__saveChart('Topic Popularity', semesters, f'results/User-{user}-Popularity-Stacked-Chart.png')
 
             # Create loayalty bar chart
             plt.rcParams['xtick.labelbottom'] = True
@@ -538,7 +522,7 @@ class PostProcessing(BaseStep):
         plt.figure(figsize=(8,5))
         plt.stackplot(semesters, popularitiesByMonth, labels=labels, colors=palette)
         plt.margins(0,0)
-        self.__saveChart('Topic Popularity', self.__getXTicks(semesters), 'results/General-Popularity-Stacked-Chart.png')
+        self.__saveChart('Topic Popularity', semesters, 'results/General-Popularity-Stacked-Chart.png')
 
         # Create drift bar chart
         plt.rcParams['xtick.labelbottom'] = True
