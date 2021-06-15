@@ -114,7 +114,7 @@ class PostProcessing(BaseStep):
         ax.set_ylabel('Iterations')
         ax.set_zlabel('Coherence')
 
-        plt.savefig('results/Coherence-Chart.png', dpi=300)
+        plt.savefig('results/Coherence-Chart.png', dpi=600)
         plt.clf()
     
     def __normalizeTopics(self, topics):
@@ -386,7 +386,7 @@ class PostProcessing(BaseStep):
     def __saveChart(self, yLabel, xTicks, path, legends=True):       
         if isinstance(yLabel, str): plt.ylabel(yLabel)
         if legends: plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=4, fontsize='small',  borderaxespad=0, labelspacing=0.8)
-        if isinstance(xTicks, Iterable): plt.xticks(xTicks, rotation=45, ha='left', position=(1,1))
+        if isinstance(xTicks, Iterable): plt.xticks(xTicks, rotation=45, ha='left')
         plt.tight_layout()
         plt.savefig(path, dpi=600)
         plt.clf()
@@ -550,7 +550,7 @@ class PostProcessing(BaseStep):
             plt.plot(popularities, color=palette[i], linewidth=12)
             plt.axis('off')
             plt.tight_layout(pad=0.1, w_pad=0.1, h_pad=0.1)
-            plt.savefig(f'results/Topic-{topic}-Evolution-Line-Chart.png', dpi=100)
+            plt.savefig(f'results/Topic-{topic}-Evolution-Line-Chart.png', dpi=50)
             plt.clf()
     
     def _process(self):
@@ -560,14 +560,14 @@ class PostProcessing(BaseStep):
         self.__experiment = self.__experiments.iloc[self.__experiments.coherence.idxmax()]
         self.__countEmpty = 0
         
-        self.__model = tp.LDAModel.load(self.__modelFile)
-        self.__extractTopics()
+        # self.__model = tp.LDAModel.load(self.__modelFile)
+        # self.__extractTopics()
         self.__loadLabeledTopics()
 
         self.__createCoherenceChart()
 
-        self.__computeGeneralPopularity()
+        # self.__computeGeneralPopularity()
         self.__createGeneralCharts()
         
-        self.__computeUserPopularity()
+        # self.__computeUserPopularity()
         self.__createUserCharts()
